@@ -11,6 +11,8 @@ if __name__ == "__main__":
     port = int(sys.argv[2])
     server_network = Network.from_address(host, port)
 
+    player_id = server_network.receive()
+
     # Set up game window
     screen = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("Multiplayer Ping Pong")
@@ -32,9 +34,9 @@ if __name__ == "__main__":
 
         # Send control commands to server
         if keys[pygame.K_UP]:
-            server_network.send("UP pressed")
+            server_network.send(f"{player_id}: UP pressed")
         elif keys[pygame.K_DOWN]:
-            server_network.send("DOWN pressed")
+            server_network.send(f"{player_id}: DOWN pressed")
 
         # Draw background
         screen.fill((0, 0, 0))
