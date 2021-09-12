@@ -47,4 +47,3 @@ jobs:
       - name: Unit tests
         run: |
           pytest --rootdir=src/ tests
-          pylint src

@@ -1,13 +1,27 @@
 import socket
 import threading
-from utils import ClientNetwork
+from utils import Network
 
 PORT = 5050
 
 def handle_client(connection, address):
     print("[SERVER] connected to: ", address)
-    client_network = ClientNetwork(connection)
-    client_network.send([1, 2, 3])
+    client_network = Network(connection)
+
+    while True:
+        try:
+            data = client_network.receive()
+
+            if data == 'x':
+                break
+
+            print(data)
+        except socket.error as err:
+            print(err)
+            break
+
+    print("Connection lost: ", address)
+    connection.close()
 
 if __name__ == "__main__":
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,5 +31,7 @@ if __name__ == "__main__":
     server.listen()
     print(f"[NETWORK] ({host}, {PORT})")
 
-    client_thread = threading.Thread(target=handle_client, args=server.accept())
-    client_thread.start()
+    while True:
+        client_conn, client_addr = server.accept()
+        client_thread = threading.Thread(target=handle_client, args=(client_conn, client_addr))
+        client_thread.start()

@@ -3,7 +3,7 @@ import json
 
 HEADER = 64
 
-class ClientNetwork:
+class Network:
     def __init__(self, connection: socket.socket):
         self.connection = connection
 
