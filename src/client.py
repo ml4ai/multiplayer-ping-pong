@@ -1,9 +1,15 @@
 import pygame
+import sys
+from utils import Network
 
 WINDOW_SIZE = (1100, 800)
 
 if __name__ == "__main__":
     pygame.init()
+
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    server_network = Network.from_address(host, port)
 
     # Set up game window
     screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -24,12 +30,12 @@ if __name__ == "__main__":
         # Send control commands to server
         keys = pygame.key.get_pressed()
 
-        # TODO: send control commands to server
+        # Send control commands to server
         if keys[pygame.K_UP]:
-            print("UP pressed")
+            server_network.send("UP pressed")
         elif keys[pygame.K_DOWN]:
-            print("DOWN pressed")
-        
+            server_network.send("DOWN pressed")
+
         # Draw background
         screen.fill((0, 0, 0))
 
@@ -39,4 +45,5 @@ if __name__ == "__main__":
         # Limit to 60 frames per second
         clock.tick(60)
 
+    server_network.send('x')
     pygame.quit()
