@@ -1,7 +1,7 @@
 import socket
 import json
 
-HEADER = 1024
+HEADER = 2048
 
 class Network:
     def __init__(self, connection: socket.socket):
