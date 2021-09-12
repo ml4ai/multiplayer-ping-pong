@@ -46,4 +46,4 @@ jobs:
         
       - name: Unit tests
         run: |
-          pytest --rootdir=src tests
+          pytest --rootdir=src/ tests
