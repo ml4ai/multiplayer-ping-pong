@@ -1,9 +1,16 @@
 import pygame
+import sys
+from utils import ClientNetwork
 
 WINDOW_SIZE = (1100, 800)
 
 if __name__ == "__main__":
     pygame.init()
+
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    server_network = ClientNetwork.from_address(host, port)
+    print(server_network.receive())
 
     # Set up game window
     screen = pygame.display.set_mode(WINDOW_SIZE)
