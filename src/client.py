@@ -29,23 +29,25 @@ if __name__ == "__main__":
         if not running:
             break
 
+        print(server_network.receive())
+
         # Send control commands to server
         keys = pygame.key.get_pressed()
 
         # Send control commands to server
         if keys[pygame.K_UP]:
-            server_network.send(f"{player_id}: UP pressed")
+            server_network.send("UP")
         elif keys[pygame.K_DOWN]:
-            server_network.send(f"{player_id}: DOWN pressed")
+            server_network.send("DOWN")
 
         # Draw background
-        screen.fill((0, 0, 0))
+        # screen.fill((0, 0, 0))
 
         # Update screen
-        pygame.display.flip()
+        # pygame.display.flip()
 
         # Limit to 60 frames per second
-        clock.tick(60)
+        # clock.tick(60)
 
     server_network.send('x')
     pygame.quit()

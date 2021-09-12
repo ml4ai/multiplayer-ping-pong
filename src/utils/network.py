@@ -1,7 +1,7 @@
 import socket
 import json
 
-HEADER = 64
+HEADER = 1024
 
 class Network:
     def __init__(self, connection: socket.socket):
@@ -16,15 +16,8 @@ class Network:
 
     def send(self, data):
         data_msg = json.dumps(data).encode()
-        len_msg = str(len(data_msg)).encode()
-        len_msg += b' ' * (HEADER - len(len_msg))
-        self.connection.send(len_msg)
+        data_msg += b' ' * (HEADER - len(data_msg))
         self.connection.send(data_msg)
 
     def receive(self):
-        msg_len = self.connection.recv(HEADER).decode()
-
-        if not msg_len:
-            return None
-
-        return json.loads(self.connection.recv(int(msg_len)).decode())
+        return json.loads(self.connection.recv(HEADER).decode())
