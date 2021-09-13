@@ -3,10 +3,12 @@ import threading
 import pygame
 from utils import Network
 from utils import Paddle
+from utils import Ball
 
 INCOMING_PORT = 5050
 OUTGOING_PORT = INCOMING_PORT + 1
-INITIAL_PADDLE_POSITION = 0
+PADDLE_X_LEFT = 0
+PADDLE_X_RIGHT = 1090
 
 class Server:
     def __init__(self):
@@ -22,9 +24,12 @@ class Server:
 
         print(f"[NETWORK] ({host}, {INCOMING_PORT})")
 
-        self._currentID = 0
-        self._paddle_positions = {}
+        self._currentID = 1
+        self._positions = {}
         self._subscribed_networks = []
+
+        self._ball = Ball()
+        self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
 
     def run(self):
         subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
@@ -58,7 +63,11 @@ class Server:
             client_conn, client_addr = self._server_publish.accept()
             client_network = Network(client_conn)
 
-            self._paddle_positions[self._currentID] = [INITIAL_PADDLE_POSITION, 0]
+            data = client_network.receive()
+            if data == "LEFT":
+                self._positions[self._currentID] = [PADDLE_X_LEFT, 0]
+            else:
+                self._positions[self._currentID] = [PADDLE_X_RIGHT, 0]
 
             print("[SERVER] publish to: ", client_addr)
 
@@ -73,7 +82,7 @@ class Server:
             removing_indexes = []
             for index, client_update_network in enumerate(self._subscribed_networks):
                 try:
-                    client_update_network.send(self._paddle_positions)
+                    client_update_network.send(self._positions)
                 except Exception as e:
                     print(e)
                     removing_indexes.append(index)
@@ -87,19 +96,19 @@ class Server:
             clock.tick(60)
 
     def _handle_publisher(self, client_control_network, client_id):
-        player_paddle = Paddle(INITIAL_PADDLE_POSITION, 0, 700)
+        player_paddle = Paddle(self._positions[client_id][0], 0, 700)
 
         while True:
             try:
                 data = client_control_network.receive()
 
                 if data == 'x':
-                    del self._paddle_positions[client_id]
+                    del self._positions[client_id]
                     break
                 elif data == "UP":
-                    self._paddle_positions[client_id][1] = player_paddle.move_up()
+                    self._positions[client_id][1] = player_paddle.move_up()
                 elif data == "DOWN":
-                    self._paddle_positions[client_id][1] = player_paddle.move_down()
+                    self._positions[client_id][1] = player_paddle.move_down()
 
             except Exception as e:
                 print(e)
