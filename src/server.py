@@ -1,37 +1,116 @@
 import socket
 import threading
+import pygame
 from utils import Network
+from utils import Paddle
 
-PORT = 5050
+INCOMING_PORT = 5050
+OUTGOING_PORT = INCOMING_PORT + 1
+INITIAL_PADDLE_POSITION = 0
 
-def handle_client(connection, address):
-    print("[SERVER] connected to: ", address)
-    client_network = Network(connection)
+class Server:
+    def __init__(self):
+        host = socket.gethostbyname(socket.gethostname())
 
-    while True:
-        try:
-            data = client_network.receive()
+        self._server_subscribe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_subscribe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
+        self._server_subscribe.bind((host, INCOMING_PORT))
 
-            if data == 'x':
-                break
+        self._server_publish = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_publish.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
+        self._server_publish.bind((host, OUTGOING_PORT))
 
-            print(data)
-        except socket.error as err:
-            print(err)
-            break
+        print(f"[NETWORK] ({host}, {INCOMING_PORT})")
 
-    print("Connection lost: ", address)
-    connection.close()
+        self._currentID = 0
+        self._paddle_positions = {}
+        self._subscribed_networks = []
+
+    def run(self):
+        subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
+        subscribing_thread.start()
+
+        updating_subscribers_thread = threading.Thread(target=self._update_subscribers)
+        updating_subscribers_thread.start()
+
+        publishing_thread = threading.Thread(target=self._dispatch_publishing_network)
+        publishing_thread.start()
+
+        subscribing_thread.join()
+        updating_subscribers_thread.join()
+        publishing_thread.join()
+
+    def _dispatch_subscribing_network(self):
+        self._server_subscribe.listen()
+
+        while True:
+            client_conn, client_addr = self._server_subscribe.accept()
+            client_network = Network(client_conn)
+
+            self._subscribed_networks.append(client_network)
+
+            print("[SERVER] subscribed: ", client_addr)
+
+    def _dispatch_publishing_network(self):
+        self._server_publish.listen()
+
+        while True:
+            client_conn, client_addr = self._server_publish.accept()
+            client_network = Network(client_conn)
+
+            self._paddle_positions[self._currentID] = [INITIAL_PADDLE_POSITION, 0]
+
+            print("[SERVER] publish to: ", client_addr)
+
+            client_thread = threading.Thread(target=self._handle_publisher, args=(client_network, self._currentID))
+            client_thread.start()
+
+            self._currentID += 1
+
+    def _update_subscribers(self):
+        clock = pygame.time.Clock()
+        while True:
+            removing_indexes = []
+            for index, client_update_network in enumerate(self._subscribed_networks):
+                try:
+                    client_update_network.send(self._paddle_positions)
+                except Exception as e:
+                    print(e)
+                    removing_indexes.append(index)
+
+            offset = 0
+            for index in removing_indexes:
+                self._subscribed_networks[index - offset].close()
+                del self._subscribed_networks[index - offset]
+                offset += 1
+            
+            clock.tick(60)
+
+    def _handle_publisher(self, client_control_network, client_id):
+        player_paddle = Paddle(INITIAL_PADDLE_POSITION, 0, 700)
+
+        while True:
+            try:
+                data = client_control_network.receive()
+
+                if data == 'x':
+                    del self._paddle_positions[client_id]
+                    break
+                elif data == "UP":
+                    self._paddle_positions[client_id][1] = player_paddle.move_up()
+                elif data == "DOWN":
+                    self._paddle_positions[client_id][1] = player_paddle.move_down()
+
+            except Exception as e:
+                print(e)
+                continue
+
+        print("Connection closed")
+        client_control_network.close()
+
 
 if __name__ == "__main__":
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = socket.gethostbyname(socket.gethostname())
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-    server.bind((host, PORT))
-    server.listen()
-    print(f"[NETWORK] ({host}, {PORT})")
+    pygame.init()
 
-    while True:
-        client_conn, client_addr = server.accept()
-        client_thread = threading.Thread(target=handle_client, args=(client_conn, client_addr))
-        client_thread.start()
+    server = Server()
+    server.run()
