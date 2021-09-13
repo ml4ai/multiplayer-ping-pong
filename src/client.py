@@ -24,9 +24,6 @@ class Client:
         screen = pygame.display.set_mode(WINDOW_SIZE)
         pygame.display.set_caption("Multiplayer Ping Pong")
 
-        # Use clock to control framerate
-        clock = pygame.time.Clock()
-
         while self.running:
             # Exit the game if user hits close
             for event in pygame.event.get():
@@ -51,8 +48,6 @@ class Client:
 
             # Update screen
             pygame.display.flip()
-
-            clock.tick(120)
 
         self._to_server.send('x')
         self._from_server.close()
