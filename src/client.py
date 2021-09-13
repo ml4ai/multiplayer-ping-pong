@@ -35,11 +35,10 @@ class Client:
             if not self._running:
                 break
 
-            positions = self._from_server.receive()
-            print(positions)
+            data = self._from_server.receive()
 
             all_sprites_list = pygame.sprite.Group()
-            for object_id, position in positions.items():
+            for object_id, position in data["positions"].items():
                 if int(object_id) == 0:
                     ball = Ball()
                     ball.rect.x = position[0]
@@ -54,6 +53,13 @@ class Client:
             screen.fill((0, 0, 0))
 
             all_sprites_list.draw(screen)
+
+            #Display scores:
+            font = pygame.font.Font(None, 74)
+            text = font.render(str(data["score_left"]), 1, (255, 255, 255))
+            screen.blit(text, (420,10))
+            text = font.render(str(data["score_right"]), 1, (255, 255, 255))
+            screen.blit(text, (650,10))
 
             # Update screen
             pygame.display.flip()

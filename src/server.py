@@ -33,6 +33,9 @@ class Server:
 
         self._paddles = {}
 
+        self._score_left = 0
+        self._score_right = 0
+
     def run(self):
         subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
         subscribing_thread.start()
@@ -88,20 +91,27 @@ class Server:
                     break
 
             if self._ball.rect.x >= 1090:
+                self._score_left += 1
                 self._ball.velocity[0] = -self._ball.velocity[0]
             if self._ball.rect.x <= 0:
+                self._score_right += 1
                 self._ball.velocity[0] = -self._ball.velocity[0]
-            if self._ball.rect.y >= 790:
+            if self._ball.rect.y >= 785:
                 self._ball.velocity[1] = -self._ball.velocity[1]
             if self._ball.rect.y <= 0:
                 self._ball.velocity[1] = -self._ball.velocity[1]
 
             self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
 
+            data = {}
+            data["score_left"] = self._score_left
+            data["score_right"] = self._score_right
+            data["positions"] = self._positions
+
             removing_indexes = []
             for index, client_update_network in enumerate(self._subscribed_networks):
                 try:
-                    client_update_network.send(self._positions)
+                    client_update_network.send(data)
                 except Exception as e:
                     print(e)
                     removing_indexes.append(index)
