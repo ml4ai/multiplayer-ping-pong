@@ -77,7 +77,7 @@ class Client:
             elif keys[pygame.K_DOWN]:
                 self._to_server.send("DOWN")
             
-            clock.tick(60)
+            clock.tick(120)
         
         self._to_server.close()
 

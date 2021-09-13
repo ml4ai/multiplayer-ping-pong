@@ -1,8 +1,9 @@
 import pygame
 
-PADDLE_WIDTH = 10
+PADDLE_WIDTH = 20
 PADDLE_HEIGHT = 100
 PADDLE_COLOR = (255, 255, 255)
+PADDLE_SPEED = 5
 
 
 class Paddle(pygame.sprite.Sprite):
@@ -17,7 +18,7 @@ class Paddle(pygame.sprite.Sprite):
         self.rect.y = 0
         self.rect.x = x_position
 
-        self.speed = 10
+        self.speed = PADDLE_SPEED
         self.upper_height = upper_height
         self.lower_height = lower_height
 

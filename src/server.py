@@ -8,7 +8,7 @@ from utils import Ball
 INCOMING_PORT = 5050
 OUTGOING_PORT = INCOMING_PORT + 1
 PADDLE_X_LEFT = 0
-PADDLE_X_RIGHT = 1090
+PADDLE_X_RIGHT = 1080
 
 class Server:
     def __init__(self):
@@ -30,6 +30,8 @@ class Server:
 
         self._ball = Ball()
         self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
+
+        self._paddles = {}
 
     def run(self):
         subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
@@ -79,6 +81,23 @@ class Server:
     def _update_subscribers(self):
         clock = pygame.time.Clock()
         while True:
+            self._ball.update()
+            for _, paddle in self._paddles.items():
+                if pygame.sprite.collide_mask(self._ball, paddle):
+                    self._ball.bounce()
+                    break
+
+            if self._ball.rect.x >= 1090:
+                self._ball.velocity[0] = -self._ball.velocity[0]
+            if self._ball.rect.x <= 0:
+                self._ball.velocity[0] = -self._ball.velocity[0]
+            if self._ball.rect.y >= 790:
+                self._ball.velocity[1] = -self._ball.velocity[1]
+            if self._ball.rect.y <= 0:
+                self._ball.velocity[1] = -self._ball.velocity[1]
+
+            self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
+
             removing_indexes = []
             for index, client_update_network in enumerate(self._subscribed_networks):
                 try:
@@ -93,10 +112,11 @@ class Server:
                 del self._subscribed_networks[index - offset]
                 offset += 1
             
-            clock.tick(60)
+            clock.tick(120)
 
     def _handle_publisher(self, client_control_network, client_id):
         player_paddle = Paddle(self._positions[client_id][0], 0, 700)
+        self._paddles[client_id] = player_paddle
 
         while True:
             try:
@@ -104,6 +124,7 @@ class Server:
 
                 if data == 'x':
                     del self._positions[client_id]
+                    del self._paddles[client_id]
                     break
                 elif data == "UP":
                     self._positions[client_id][1] = player_paddle.move_up()
@@ -112,7 +133,8 @@ class Server:
 
             except Exception as e:
                 print(e)
-                continue
+                del self._paddles[client_id]
+                break
 
         print("Connection closed")
         client_control_network.close()

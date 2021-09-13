@@ -3,6 +3,7 @@ from random import randint
 
 BALL_SIZE = 10
 WHITE = (255, 255, 255)
+BALL_SPEED = 8
 
 class Ball(pygame.sprite.Sprite):
     def __init__(self):
@@ -14,7 +15,7 @@ class Ball(pygame.sprite.Sprite):
 
         pygame.draw.rect(self.image, WHITE, [0, 0, BALL_SIZE, BALL_SIZE])
 
-        self.velocity = [8, randint(-8, 8)]
+        self.velocity = [BALL_SPEED, randint(-8, 8)]
 
         self.rect = self.image.get_rect()
         self.rect.x = 545
@@ -24,6 +25,6 @@ class Ball(pygame.sprite.Sprite):
         self.rect.x += self.velocity[0]
         self.rect.y += self.velocity[1]
 
-    def bound(self):
+    def bounce(self):
         self.velocity[0] = -self.velocity[0]
         self.velocity[1] = randint(-8, 8)
