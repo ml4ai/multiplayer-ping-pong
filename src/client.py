@@ -1,6 +1,7 @@
 import pygame
 import sys
 import threading
+from utils import Paddle
 from utils import Network
 
 WINDOW_SIZE = (1100, 800)
@@ -34,10 +35,19 @@ class Client:
             if not self.running:
                 break
 
-            print(self._from_server.receive())
+            paddle_positions = self._from_server.receive()
+            print(paddle_positions)
+
+            all_sprites_list = pygame.sprite.Group()
+            for _, position in paddle_positions.items():
+                paddle = Paddle(position[0], 0, WINDOW_SIZE[1] - 100)
+                paddle.rect.y = position[1]
+                all_sprites_list.add(paddle)
 
             # Draw background
             screen.fill((0, 0, 0))
+
+            all_sprites_list.draw(screen)
 
             # Update screen
             pygame.display.flip()

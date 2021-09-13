@@ -6,7 +6,7 @@ from utils import Paddle
 
 INCOMING_PORT = 5050
 OUTGOING_PORT = INCOMING_PORT + 1
-INITIAL_PADDLE_POSITION = 20
+INITIAL_PADDLE_POSITION = 0
 
 class Server:
     def __init__(self):
@@ -87,7 +87,7 @@ class Server:
             clock.tick(60)
 
     def _handle_publisher(self, client_control_network, client_id):
-        player = Paddle(INITIAL_PADDLE_POSITION, 0, 800)
+        player_paddle = Paddle(INITIAL_PADDLE_POSITION, 0, 700)
 
         while True:
             try:
@@ -97,9 +97,9 @@ class Server:
                     del self._paddle_positions[client_id]
                     break
                 elif data == "UP":
-                    self._paddle_positions[client_id][1] = player.move_up()
+                    self._paddle_positions[client_id][1] = player_paddle.move_up()
                 elif data == "DOWN":
-                    self._paddle_positions[client_id][1] = player.move_down()
+                    self._paddle_positions[client_id][1] = player_paddle.move_down()
 
             except Exception as e:
                 print(e)
