@@ -33,9 +33,6 @@ class Server:
 
         self._paddles = {}
 
-        self._all_sprites_list = pygame.sprite.Group()
-        self._all_sprites_list.add(self._ball)
-
     def run(self):
         subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
         subscribing_thread.start()
@@ -84,7 +81,7 @@ class Server:
     def _update_subscribers(self):
         clock = pygame.time.Clock()
         while True:
-            self._all_sprites_list.update()
+            self._ball.update()
             for _, paddle in self._paddles.items():
                 if pygame.sprite.collide_mask(self._ball, paddle):
                     self._ball.bounce()
@@ -120,7 +117,6 @@ class Server:
     def _handle_publisher(self, client_control_network, client_id):
         player_paddle = Paddle(self._positions[client_id][0], 0, 700)
         self._paddles[client_id] = player_paddle
-        self._all_sprites_list.add(player_paddle)
 
         while True:
             try:
@@ -128,7 +124,6 @@ class Server:
 
                 if data == 'x':
                     del self._positions[client_id]
-                    self._all_sprites_list.remove(player_paddle)
                     del self._paddles[client_id]
                     break
                 elif data == "UP":
@@ -138,7 +133,7 @@ class Server:
 
             except Exception as e:
                 print(e)
-                self._all_sprites_list.remove(player_paddle)
+                del self._paddles[client_id]
                 break
 
         print("Connection closed")
