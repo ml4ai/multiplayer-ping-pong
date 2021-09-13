@@ -14,10 +14,18 @@ class Network:
 
         return cls(connection)
 
+    def close(self):
+        self.connection.close()
+
     def send(self, data):
         data_msg = json.dumps(data).encode()
         data_msg += b' ' * (HEADER - len(data_msg))
         self.connection.send(data_msg)
 
     def receive(self):
-        return json.loads(self.connection.recv(HEADER).decode())
+        data = self.connection.recv(HEADER)
+
+        if data:
+            return json.loads(data.decode())
+        else:
+            return None

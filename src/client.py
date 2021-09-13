@@ -9,8 +9,10 @@ class Client:
     def __init__(self):
         host = sys.argv[1]
         port = int(sys.argv[2])
-        self.server_network = Network.from_address(host, port)
-        self.player_id = self.server_network.receive()
+
+        self._from_server = Network.from_address(host, port)
+        self._to_server = Network.from_address(host, port + 1)
+
         self.running = True
 
     def run(self):
@@ -32,7 +34,7 @@ class Client:
             if not self.running:
                 break
 
-            print(self.server_network.receive())
+            print(self._from_server.receive())
 
             # Draw background
             screen.fill((0, 0, 0))
@@ -40,12 +42,13 @@ class Client:
             # Update screen
             pygame.display.flip()
 
-            # Limit to 60 frames per second
-            clock.tick(60)
+            clock.tick(120)
 
-        self.server_network.send('x')
+        self._to_server.send('x')
+        self._from_server.close()
         pygame.quit()
 
+        control_thread.join()
 
     def _send_input(self):
         clock = pygame.time.Clock()
@@ -54,11 +57,13 @@ class Client:
 
             # Send control commands to server
             if keys[pygame.K_UP]:
-                self.server_network.send("UP")
+                self._to_server.send("UP")
             elif keys[pygame.K_DOWN]:
-                self.server_network.send("DOWN")
+                self._to_server.send("DOWN")
             
-            clock.tick(100)
+            clock.tick(60)
+        
+        self._to_server.close()
 
 
 if __name__ == "__main__":
