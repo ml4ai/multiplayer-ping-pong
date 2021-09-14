@@ -136,6 +136,8 @@ class Server:
         self._paddles[client_id] = player_paddle
         self._thread_lock.release()
 
+        client_control_network.send(client_id)
+
         while True:
             try:
                 data = client_control_network.receive()
