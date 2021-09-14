@@ -39,8 +39,8 @@ jobs:
           key: ${{ env.pythonLocation }}-packages-${{ hashFiles('requirements.txt') }}
           
       - name: Install dependencies
-        if: steps.cache-packages.outputs.cache-hit != 'true'
         run: |
+          apt-get update
           pip install pytest pytest-dependency
           pip install -r requirements.txt
         
