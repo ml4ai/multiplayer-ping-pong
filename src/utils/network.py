@@ -1,5 +1,6 @@
 import socket
 import json
+import sys
 
 HEADER = 2048
 
@@ -18,14 +19,20 @@ class Network:
         self.connection.close()
 
     def send(self, data):
-        data_msg = json.dumps(data).encode()
+        data_msg = json.dumps(data).encode('utf-8')
         data_msg += b' ' * (HEADER - len(data_msg))
-        self.connection.send(data_msg)
+        self.connection.sendall(data_msg)
 
     def receive(self):
-        data = self.connection.recv(HEADER)
+        data = None
+        while True:
+            if data is None:
+                data = self.connection.recv(HEADER)
+            else:
+                data += self.connection.recv(HEADER)
 
-        if data:
-            return json.loads(data.decode())
-        else:
-            return None
+            size = sys.getsizeof(data)
+            if size == 2081:
+                return json.loads(data.decode('utf-8'))
+            elif size > 2081:
+                data = None
