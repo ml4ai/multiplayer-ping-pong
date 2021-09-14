@@ -36,6 +36,8 @@ class Server:
         self._score_left = 0
         self._score_right = 0
 
+        self._thread_lock = threading.Lock()
+
     def run(self):
         subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
         subscribing_thread.start()
@@ -85,10 +87,13 @@ class Server:
         clock = pygame.time.Clock()
         while True:
             self._ball.update()
-            for _, paddle in self._paddles.items():
+            self._thread_lock.acquire()
+            paddles = self._paddles.values()
+            for paddle in paddles:
                 if pygame.sprite.collide_mask(self._ball, paddle):
                     self._ball.bounce()
                     break
+            self._thread_lock.release()
 
             if self._ball.rect.x >= 1090:
                 self._score_left += 1
@@ -121,12 +126,15 @@ class Server:
                 self._subscribed_networks[index - offset].close()
                 del self._subscribed_networks[index - offset]
                 offset += 1
+                print("Connection closed")
             
             clock.tick(120)
 
     def _handle_publisher(self, client_control_network, client_id):
         player_paddle = Paddle(self._positions[client_id][0], 0, 700)
+        self._thread_lock.acquire()
         self._paddles[client_id] = player_paddle
+        self._thread_lock.release()
 
         while True:
             try:
@@ -134,7 +142,9 @@ class Server:
 
                 if data == 'x':
                     del self._positions[client_id]
+                    self._thread_lock.acquire()
                     del self._paddles[client_id]
+                    self._thread_lock.release()
                     break
                 elif data == "UP":
                     self._positions[client_id][1] = player_paddle.move_up()
@@ -143,7 +153,9 @@ class Server:
 
             except Exception as e:
                 print(e)
+                self._thread_lock.acquire()
                 del self._paddles[client_id]
+                self._thread_lock.release()
                 break
 
         print("Connection closed")
