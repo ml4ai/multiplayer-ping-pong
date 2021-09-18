@@ -38,9 +38,9 @@ class AIClient:
         clock = pygame.time.Clock()
         while True:
             # Send control commands to server
-            if self._ball_position[1] - self._paddle_position[1] < 0:
+            if (self._ball_position[1] + 10.0 / 2.0) - (self._paddle_position[1] + 110.0 / 2.0) < 50:
                 self._to_server.send("UP")
-            elif self._ball_position[1] - self._paddle_position[1] > 0:
+            elif (self._ball_position[1] + 10.0 / 2.0) - (self._paddle_position[1] + 110.0 / 2.0) > 50:
                 self._to_server.send("DOWN")
             
             clock.tick(120)
