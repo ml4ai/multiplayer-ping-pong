@@ -10,6 +10,8 @@ OUTGOING_PORT = INCOMING_PORT + 1
 PADDLE_X_LEFT = 0
 PADDLE_X_RIGHT = 1080
 
+COLLIDE_BLOCK_COUNT_MAX = 100
+
 class Server:
     def __init__(self):
         host = socket.gethostbyname(socket.gethostname())
@@ -85,26 +87,37 @@ class Server:
 
     def _update_subscribers(self):
         clock = pygame.time.Clock()
+        collide_block_counter = 0
         while True:
             self._ball.update()
             self._thread_lock.acquire()
-            paddles = self._paddles.values()
-            for paddle in paddles:
-                if pygame.sprite.collide_mask(self._ball, paddle):
-                    self._ball.bounce()
-                    break
+            if collide_block_counter == 0:
+                for paddle in self._paddles.values():
+                    if pygame.sprite.collide_mask(self._ball, paddle):
+                        self._ball.bounce(int(((self._ball.rect.y + self._ball.size / 2.0) - (paddle.rect.y + paddle.height / 2.0)) * 0.15))
+                        collide_block_counter += 1
+                        break
+            elif collide_block_counter == COLLIDE_BLOCK_COUNT_MAX:
+                collide_block_counter = 0
+            else:
+                collide_block_counter += 1
+
             self._thread_lock.release()
 
             if self._ball.rect.x >= 1090:
                 self._score_left += 1
-                self._ball.velocity[0] = -self._ball.velocity[0]
+                self._ball.bounce()
+                collide_block_counter += 1
             if self._ball.rect.x <= 0:
                 self._score_right += 1
-                self._ball.velocity[0] = -self._ball.velocity[0]
+                self._ball.bounce()
+                collide_block_counter += 1
             if self._ball.rect.y >= 785:
                 self._ball.velocity[1] = -self._ball.velocity[1]
+                collide_block_counter += 1
             if self._ball.rect.y <= 0:
                 self._ball.velocity[1] = -self._ball.velocity[1]
+                collide_block_counter += 1
 
             self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
 

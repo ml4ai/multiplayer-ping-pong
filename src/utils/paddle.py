@@ -1,7 +1,7 @@
 import pygame
 
 PADDLE_WIDTH = 20
-PADDLE_HEIGHT = 100
+PADDLE_HEIGHT = 110
 PADDLE_COLOR = (255, 255, 255)
 PADDLE_SPEED = 5
 
@@ -18,14 +18,15 @@ class Paddle(pygame.sprite.Sprite):
         self.rect.y = 0
         self.rect.x = x_position
 
-        self.speed = PADDLE_SPEED
-        self.upper_height = upper_height
-        self.lower_height = lower_height
+        self._speed = PADDLE_SPEED
+        self.height = PADDLE_HEIGHT
+        self._upper_height = upper_height
+        self._lower_height = lower_height
 
     def move_up(self):
-        self.rect.y = max(self.upper_height, self.rect.y - self.speed)
+        self.rect.y = max(self._upper_height, self.rect.y - self._speed)
         return self.rect.y
 
     def move_down(self):
-        self.rect.y = min(self.lower_height, self.rect.y + self.speed)
+        self.rect.y = min(self._lower_height, self.rect.y + self._speed)
         return self.rect.y
