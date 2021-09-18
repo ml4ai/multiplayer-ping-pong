@@ -1,25 +1,20 @@
 import pygame
-
-PADDLE_WIDTH = 20
-PADDLE_HEIGHT = 110
-PADDLE_COLOR = (255, 255, 255)
-PADDLE_SPEED = 5
+import config as cfg
 
 
 class Paddle(pygame.sprite.Sprite):
     def __init__(self, x_position, upper_height: int, lower_height: int):
         super().__init__()
-        self.image = pygame.Surface((PADDLE_WIDTH, PADDLE_HEIGHT))
+        self.image = pygame.Surface((cfg.PADDLE_WIDTH, cfg.PADDLE_HEIGHT))
         self.image.fill((0, 0 ,0))
         self.image.set_colorkey((0, 0 ,0))
-        pygame.draw.rect(self.image, PADDLE_COLOR, (0, 0, PADDLE_WIDTH, PADDLE_HEIGHT))
+        pygame.draw.rect(self.image, cfg.FOREGROUND_COLOR, (0, 0, cfg.PADDLE_WIDTH, cfg.PADDLE_HEIGHT))
 
         self.rect = self.image.get_rect()
         self.rect.y = 0
         self.rect.x = x_position
 
-        self._speed = PADDLE_SPEED
-        self.height = PADDLE_HEIGHT
+        self._speed = cfg.PADDLE_SPEED
         self._upper_height = upper_height
         self._lower_height = lower_height
 

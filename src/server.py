@@ -1,12 +1,14 @@
 import socket
 import threading
 import pygame
+import config as cfg
 from utils import Network
 from utils import Paddle
 from utils import Ball
 
-INCOMING_PORT = 5050
+INCOMING_PORT = cfg.SERVER_PORT
 OUTGOING_PORT = INCOMING_PORT + 1
+
 PADDLE_X_LEFT = 0
 PADDLE_X_RIGHT = 1080
 
@@ -94,7 +96,7 @@ class Server:
             if collide_block_counter == 0:
                 for paddle in self._paddles.values():
                     if pygame.sprite.collide_mask(self._ball, paddle):
-                        self._ball.bounce(int(((self._ball.rect.y + self._ball.size / 2.0) - (paddle.rect.y + paddle.height / 2.0)) * 0.15))
+                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.15))
                         collide_block_counter += 1
                         break
             elif collide_block_counter == COLLIDE_BLOCK_COUNT_MAX:
