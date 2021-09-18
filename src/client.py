@@ -4,8 +4,7 @@ import threading
 from utils import Paddle
 from utils import Ball
 from utils import Network
-
-WINDOW_SIZE = (1100, 800)
+import config as cfg
 
 class Client:
     def __init__(self):
@@ -24,7 +23,7 @@ class Client:
         control_thread.start()
 
         # Set up game window
-        screen = pygame.display.set_mode(WINDOW_SIZE)
+        screen = pygame.display.set_mode(cfg.WINDOW_SIZE)
         pygame.display.set_caption("Multiplayer Ping Pong")
 
         while self._running:
@@ -45,7 +44,7 @@ class Client:
                     ball.rect.y = position[1]
                     all_sprites_list.add(ball)
                 else:
-                    paddle = Paddle(position[0], 0, WINDOW_SIZE[1] - 100)
+                    paddle = Paddle(position[0], 0, cfg.WINDOW_SIZE[1] - 100)
                     paddle.rect.y = position[1]
                     all_sprites_list.add(paddle)
 

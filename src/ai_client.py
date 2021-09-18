@@ -1,8 +1,9 @@
 import sys
 import threading
 import pygame
-
+import config as cfg
 from utils import Network
+
 
 class AIClient:
     def __init__(self):
@@ -38,9 +39,9 @@ class AIClient:
         clock = pygame.time.Clock()
         while True:
             # Send control commands to server
-            if (self._ball_position[1] + 10.0 / 2.0) - (self._paddle_position[1] + 110.0 / 2.0) < 50:
+            if (self._ball_position[1] + cfg.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg.PADDLE_HEIGHT / 2.0) < 10:
                 self._to_server.send("UP")
-            elif (self._ball_position[1] + 10.0 / 2.0) - (self._paddle_position[1] + 110.0 / 2.0) > 50:
+            elif (self._ball_position[1] + cfg.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg.PADDLE_HEIGHT / 2.0) > 10:
                 self._to_server.send("DOWN")
             
             clock.tick(120)
