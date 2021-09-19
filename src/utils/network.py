@@ -14,6 +14,10 @@ class Network:
         Connect to a specific IPv4 address (host) and port
         """
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        connection.setblocking(False)
+        connection.settimeout(0.5)
+
         connection.connect((host, port))
 
         return cls(connection)

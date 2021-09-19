@@ -45,6 +45,7 @@ class Server:
         self._score_right = 0
 
         self._game_paused = True
+        self._exit_request = False
 
         self._thread_lock = threading.Lock()
 
@@ -64,6 +65,11 @@ class Server:
         server_control_thread = threading.Thread(target=self._server_control)
         server_control_thread.start()
 
+        subscribing_thread.join()
+        updating_subscribers_thread.join()
+        publishing_thread.join()
+        server_control_thread.join()
+
     def _dispatch_subscribing_network(self):
         """
         Dispatch client's connection for receiving game state updates from server
@@ -71,7 +77,7 @@ class Server:
         # Listen for client connection
         self._server_subscribe.listen()
 
-        while True:
+        while not self._exit_request:
             client_conn, client_addr = self._server_subscribe.accept()
             client_network = Network(client_conn)
 
@@ -87,7 +93,7 @@ class Server:
         # Listen for client connection
         self._server_publish.listen()
 
-        while True:
+        while not self._exit_request:
             client_conn, client_addr = self._server_publish.accept()
             client_network = Network(client_conn)
 
@@ -114,7 +120,7 @@ class Server:
         Update game state then send game state updates to clients
         """
         clock = pygame.time.Clock() # Control the rate of sending data to clients
-        while True:
+        while not self._exit_request:
             if not self._game_paused:
 
                 # Update state of the ball
@@ -170,6 +176,7 @@ class Server:
             data["score_left"] = self._score_left
             data["score_right"] = self._score_right
             data["positions"] = self._positions
+            data["exit_request"] = False
 
             removing_indexes = []
             for index, client_update_network in enumerate(self._subscribed_networks):
@@ -192,6 +199,15 @@ class Server:
             # Limit loop rate to 120 loops per second
             clock.tick(120)
 
+        for client_update_network in self._subscribed_networks:
+            data["exit_request"] = True
+            client_update_network.send(data)
+            client_update_network.close()
+
+        # Close server connection
+        self._server_subscribe.close()
+        self._server_publish.close()
+
     def _handle_publisher(self, client_control_network, client_id):
         """
         Update game state with client's command
@@ -205,7 +221,7 @@ class Server:
         # Notify client its paddle id
         client_control_network.send(client_id)
 
-        while True:
+        while not self._exit_request:
             try:
                 # Get command from client
                 command = client_control_network.receive()
@@ -234,17 +250,26 @@ class Server:
                 self._thread_lock.release()
                 break
 
-        print("Connection closed")
         client_control_network.close()
+        print("Connection closed")
 
     def _server_control(self):
         """
         Control the server 
         """
-        while True:
+        while not self._exit_request:
             command = input()
             
-            if command == "pause":
+            if command == "h" or command == "help":
+                print("-----")
+                print("pause: Pause the game")
+                print("unpause: Unpause the game")
+                print("restart: Reset game and pause")
+                print("exit: Close the server")
+                print("h or help: List available commands")
+                print("-----")
+
+            elif command == "pause":
                 self._game_paused = True
 
             elif command == "unpause":
@@ -262,6 +287,9 @@ class Server:
                         self._positions[id] = [self._ball.rect.x, self._ball.rect.y]
                     else:
                         self._positions[id][1] = PADDLE_Y_CENTER
+
+            elif command == "exit":
+                self._exit_request = True
 
             else:
                 print("Unknown command")
