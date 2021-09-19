@@ -45,4 +45,5 @@ jobs:
         
       - name: Unit tests
         run: |
-          pytest --rootdir=src/ tests
+          export PYTHONPATH=src
+          pytest -v

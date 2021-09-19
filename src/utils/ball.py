@@ -6,30 +6,44 @@ from math import copysign
 
 
 class Ball(pygame.sprite.Sprite):
+    """
+    Ball pygame sprite updated by the server
+    """
     def __init__(self):
+        # Set up pygame sprite
         super().__init__()
-
         self.image = pygame.Surface([cfg.BALL_SIZE, cfg.BALL_SIZE])
         self.image.fill((0, 0, 0))
         self.image.set_colorkey((0, 0, 0))
-
         pygame.draw.rect(self.image, cfg.FOREGROUND_COLOR, [0, 0, cfg.BALL_SIZE, cfg.BALL_SIZE])
 
-        self.velocity = [cfg.BALL_X_SPEED, randint(-8, 8)]
-
         self.rect = self.image.get_rect()
-        self.rect.x = 545
-        self.rect.y = 395
+        self.rect.x = int((cfg.WINDOW_SIZE[0] + cfg.BALL_SIZE) / 2)
+        self.rect.y = int((cfg.WINDOW_SIZE[1] + cfg.BALL_SIZE) / 2)
+
+        # Initialize ball velocity
+        self.velocity = [cfg.BALL_X_SPEED, randint(-5, 5)]
 
     def update(self):
-        self.rect.x += self.velocity[0]
-        self.rect.y += self.velocity[1]
+        """
+        Update position of the ball
+        """
+        self.rect.x += int(self.velocity[0])
+        self.rect.y += int(self.velocity[1])
 
     def bounce(self, velocity_y: Optional[int] = None):
-        if velocity_y is not None:
-            assert isinstance(velocity_y, int)
-
+        """
+        Bounce the ball when it hits players' wall or paddle
+        """
+        # Move the ball the other direction
         self.velocity[0] = -self.velocity[0]
 
-        velocity_y_sign = copysign(1, self.velocity[1])
-        self.velocity[1] = velocity_y if velocity_y is not None else velocity_y_sign * randint(2, 5)
+        # If the y velocity is set by user
+        if velocity_y is not None:
+            assert isinstance(velocity_y, int)
+            self.velocity[1] = velocity_y
+
+        # Randomly generate y velocity, following its previous trajectory
+        else:
+            velocity_y_sign = copysign(1, self.velocity[1])
+            self.velocity[1] = velocity_y_sign * randint(2, 5)
