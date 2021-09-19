@@ -4,6 +4,9 @@ from random import randint
 from typing import Optional
 from math import copysign
 
+CENTER_X = int((cfg.WINDOW_SIZE[0] + cfg.BALL_SIZE) / 2)
+CENTER_Y = int((cfg.WINDOW_SIZE[1] + cfg.BALL_SIZE) / 2)
+
 
 class Ball(pygame.sprite.Sprite):
     """
@@ -18,8 +21,8 @@ class Ball(pygame.sprite.Sprite):
         pygame.draw.rect(self.image, cfg.FOREGROUND_COLOR, [0, 0, cfg.BALL_SIZE, cfg.BALL_SIZE])
 
         self.rect = self.image.get_rect()
-        self.rect.x = int((cfg.WINDOW_SIZE[0] + cfg.BALL_SIZE) / 2)
-        self.rect.y = int((cfg.WINDOW_SIZE[1] + cfg.BALL_SIZE) / 2)
+        self.rect.x = CENTER_X
+        self.rect.y = CENTER_Y
 
         # Initialize ball velocity
         self.velocity = [cfg.BALL_X_SPEED, randint(-5, 5)]
@@ -47,3 +50,10 @@ class Ball(pygame.sprite.Sprite):
         else:
             velocity_y_sign = copysign(1, self.velocity[1])
             self.velocity[1] = velocity_y_sign * randint(2, 5)
+    
+    def reset_center(self):
+        self.rect.x = CENTER_X
+        self.rect.y = CENTER_Y
+
+        # Re-initialize ball velocity
+        self.velocity = [cfg.BALL_X_SPEED, randint(-5, 5)]

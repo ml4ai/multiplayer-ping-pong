@@ -12,6 +12,8 @@ OUTGOING_PORT = INCOMING_PORT + 1
 PADDLE_X_LEFT = 0
 PADDLE_X_RIGHT = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH
 
+PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
+
 
 class Server:
     def __init__(self):
@@ -42,6 +44,8 @@ class Server:
         self._score_left = 0
         self._score_right = 0
 
+        self._game_paused = True
+
         self._thread_lock = threading.Lock()
 
     def run(self):
@@ -57,10 +61,8 @@ class Server:
         publishing_thread = threading.Thread(target=self._dispatch_publishing_network)
         publishing_thread.start()
 
-        # Wait for threads to finish
-        subscribing_thread.join()
-        updating_subscribers_thread.join()
-        publishing_thread.join()
+        server_control_thread = threading.Thread(target=self._server_control)
+        server_control_thread.start()
 
     def _dispatch_subscribing_network(self):
         """
@@ -94,10 +96,10 @@ class Server:
 
             # Left team
             if data == "LEFT":
-                self._positions[self._currentID] = [PADDLE_X_LEFT, int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)]
+                self._positions[self._currentID] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
             # Right team
             else:
-                self._positions[self._currentID] = [PADDLE_X_RIGHT, int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)]
+                self._positions[self._currentID] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
 
             print("[SERVER] publish to: ", client_addr)
 
@@ -113,45 +115,56 @@ class Server:
         """
         clock = pygame.time.Clock() # Control the rate of sending data to clients
         while True:
-            # Update state of the ball
-            self._ball.update()
+            if not self._game_paused:
 
-            # Check for collision between
-            paddle_collide_ball = False
-            self._thread_lock.acquire()
-            for paddle in self._paddles.values():
-                if pygame.sprite.collide_mask(self._ball, paddle):
-                    self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.15))
-                    paddle_collide_ball = True
-                    break
-            self._thread_lock.release()
+                # Update state of the ball
+                self._ball.update()
 
-            # If ball has not collided with paddle, check if it collides with the wall
-            if not paddle_collide_ball:
-                # Collides with right wall
-                if self._ball.rect.x >= cfg.WINDOW_SIZE[0] - cfg.BALL_SIZE:
-                    self._score_left += 1
-                    self._ball.bounce()
-                    # Offset the ball to avoid collision with paddle
-                    self._ball.rect.x -= 10
+                # Check for collision between
+                paddle_collide_ball = False
+                self._thread_lock.acquire()
+                for paddle in self._paddles.values():
+                    if pygame.sprite.collide_mask(self._ball, paddle):
+                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.15))
+                        
+                        if self._ball.rect.x < cfg.WINDOW_SIZE[0] / 2:
+                            self._ball.rect.x = cfg.PADDLE_WIDTH
 
-                # Collides left wall
-                elif self._ball.rect.x <= 0:
-                    self._score_right += 1
-                    self._ball.bounce()
-                    # Offset the ball to avoid collision with paddle
-                    self._ball.rect.x += 10
+                        else:
+                            self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH - cfg.BALL_SIZE
 
-                # Collides with bottom wall
-                elif self._ball.rect.y >= cfg.WINDOW_SIZE[1] - cfg.BALL_SIZE:
-                    self._ball.velocity[1] = -self._ball.velocity[1]
+                        paddle_collide_ball = True
+                        break
+                self._thread_lock.release()
 
-                # Collides with top wall
-                elif self._ball.rect.y <= 0:
-                    self._ball.velocity[1] = -self._ball.velocity[1]
+                # If ball has not collided with paddle, check if it collides with the wall
+                if not paddle_collide_ball:
+                    # Collides with right wall
+                    if self._ball.rect.x >= cfg.WINDOW_SIZE[0] - cfg.BALL_SIZE:
+                        self._score_left += 1
+                        self._ball.bounce()
+                        # Offset the ball to avoid collision with paddle
+                        self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg.BALL_SIZE
 
-            # Store game state
-            self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
+                    # Collides left wall
+                    elif self._ball.rect.x <= 0:
+                        self._score_right += 1
+                        self._ball.bounce()
+                        # Offset the ball to avoid collision with paddle
+                        self._ball.rect.x = 0
+
+                    # Collides with bottom wall
+                    elif self._ball.rect.y >= cfg.WINDOW_SIZE[1] - cfg.BALL_SIZE:
+                        self._ball.rect.y = cfg.WINDOW_SIZE[1] - cfg.BALL_SIZE - 1
+                        self._ball.velocity[1] = -self._ball.velocity[1]
+
+                    # Collides with top wall
+                    elif self._ball.rect.y <= 0:
+                        self._ball.rect.y = 1
+                        self._ball.velocity[1] = -self._ball.velocity[1]
+
+                # Store game state
+                self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
 
             data = {}
             data["score_left"] = self._score_left
@@ -206,11 +219,11 @@ class Server:
                     break
 
                 # Client moves paddle up
-                elif command == "UP":
+                elif not self._game_paused and command == "UP":
                     self._positions[client_id][1] = player_paddle.move_up()
 
                 # Client moves paddle down
-                elif command == "DOWN":
+                elif not self._game_paused and command == "DOWN":
                     self._positions[client_id][1] = player_paddle.move_down()
 
             except Exception as e:
@@ -224,6 +237,34 @@ class Server:
         print("Connection closed")
         client_control_network.close()
 
+    def _server_control(self):
+        """
+        Control the server 
+        """
+        while True:
+            command = input()
+            
+            if command == "pause":
+                self._game_paused = True
+
+            elif command == "unpause":
+                self._game_paused = False
+
+            elif command == "restart":
+                self._game_paused = True
+                self._score_left = 0
+                self._score_right = 0
+
+                self._ball.reset_center()
+
+                for id in self._positions.keys():
+                    if id == 0:
+                        self._positions[id] = [self._ball.rect.x, self._ball.rect.y]
+                    else:
+                        self._positions[id][1] = PADDLE_Y_CENTER
+
+            else:
+                print("Unknown command")
 
 if __name__ == "__main__":
     pygame.init()
