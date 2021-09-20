@@ -5,7 +5,7 @@
 Require Python >= 3.6. Ensure that both the server and client computers have the required packages
 
 ```python
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ## Server
