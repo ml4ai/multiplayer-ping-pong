@@ -31,6 +31,10 @@ class AIClient:
         # Create a thread for sending client input to server
         control_thread = threading.Thread(target=self._send_input)
         control_thread.start()
+        
+        # Create a thread to control client through terminal
+        client_control_thread = threading.Thread(target=self._client_control)
+        client_control_thread.start()
 
         while self._running:
             game_state = self._from_server.receive()
@@ -50,6 +54,7 @@ class AIClient:
                     self._paddle_position = position
 
         control_thread.join()
+        client_control_thread.join()
 
     def _send_input(self):
         """
@@ -75,6 +80,19 @@ class AIClient:
             
             # Limit loop rate to 120 loops per second
             clock.tick(120)
+
+    def _client_control(self):
+        """
+        Control client
+        """
+        while self._running:
+            command = input()
+            
+            if command == "exit":
+                self._running = False
+                self._to_server.send('x')
+            else:
+                print("Unknown command")
 
 
 if __name__ == "__main__":
