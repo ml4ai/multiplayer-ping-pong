@@ -26,6 +26,10 @@ class Client:
         # Create a thread for sending client input to server
         control_thread = threading.Thread(target=self._send_input)
         control_thread.start()
+        
+        # Create a thread for controlling client from terminal
+        client_control_thread = thread.Thread(target=self._client_control)
+        client_control_thread.start()
 
         # Set up game window
         screen = pygame.display.set_mode(cfg.WINDOW_SIZE)
@@ -87,8 +91,9 @@ class Client:
         # Close pygame window
         pygame.quit()
 
-        # Wait for input thread to finish
+        # Wait for threads to finish
         control_thread.join()
+        client_control_thread.join()
 
     def _send_input(self):
         """
@@ -113,6 +118,19 @@ class Client:
         
         # Close sending connection
         self._to_server.close()
+        
+    def _client_control(self):
+        """
+        Control client
+        """
+        while self._running:
+            command = input()
+            
+            if command == "exit":
+                self._running = False
+                self._to_server.send('x')
+            else:
+                print("Unknown command")
 
 
 if __name__ == "__main__":
