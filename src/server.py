@@ -81,6 +81,10 @@ class Server:
         subscribing_thread.join()
         publishing_thread.join()
 
+        # Close server connection
+        self._server_subscribe.close()
+        self._server_publish.close()
+
     def _dispatch_subscribing_network(self):
         """
         Dispatch client's connection for receiving game state updates from server
@@ -209,10 +213,6 @@ class Server:
             data["exit_request"] = True
             client_update_network.send(data)
             client_update_network.close()
-
-        # Close server connection
-        self._server_subscribe.close()
-        self._server_publish.close()
 
     def _handle_publisher(self, client_control_network, client_id):
         """
