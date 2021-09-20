@@ -29,11 +29,11 @@ class AIClient:
         Run ping pong on client's side
         """
         # Create a thread for sending client input to server
-        control_thread = threading.Thread(target=self._send_input)
+        control_thread = threading.Thread(target=self._send_input, daemon=True)
         control_thread.start()
         
         # Create a thread to control client through terminal
-        client_control_thread = threading.Thread(target=self._client_control)
+        client_control_thread = threading.Thread(target=self._client_control, daemon=True)
         client_control_thread.start()
 
         while self._running:
