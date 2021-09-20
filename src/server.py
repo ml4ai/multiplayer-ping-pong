@@ -1,6 +1,7 @@
 import socket
 import threading
 import pygame
+import sys
 import config as cfg
 from utils import Network
 from utils import Paddle
@@ -18,7 +19,7 @@ PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
 class Server:
     def __init__(self):
         # Get server's host IPv4 address
-        self._host = socket.gethostbyname(socket.gethostname())
+        self._host = sys.argv[1]
 
         # Establish connection where clients can get game state update
         self._server_subscribe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
