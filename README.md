@@ -2,7 +2,7 @@
 
 ## Install dependencies
 
-Ensure that both the server and client computers have the required packages
+Require Python >= 3.6. Ensure that both the server and client computers have the required packages
 
 ```python
 pip install -r requirements.txt
@@ -13,7 +13,7 @@ pip install -r requirements.txt
 Run the server script.
 
 ```python
-python src/server.py <host>
+python3 src/server.py <host>
 ```
 
 where `<host>` is IPv4 address of host computer.
@@ -33,7 +33,7 @@ DANGER: Do not interrupt the game from the terminal.
 Use the host IPv4 address and port specified by the server to start the client.
 
 ```python
-python src/client.py <host> <port> <TEAM>
+python3 src/client.py <host> <port> <TEAM>
 ```
 
 where `<TEAM>` is `LEFT` or `RIGHT`.
@@ -47,7 +47,7 @@ DANGER: Do not interrupt the game from the terminal.
 Use the host IPv4 address and port specified by the server to start the AI client.
 
 ```python
-python src/ai_client.py <host> <port> <TEAM>
+python3 src/ai_client.py <host> <port> <TEAM>
 ```
 
 where `<TEAM>` is `LEFT` or `RIGHT`.
