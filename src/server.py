@@ -65,9 +65,11 @@ class Server:
         server_control_thread = threading.Thread(target=self._server_control, daemon=True)
         server_control_thread.start()
 
+        # Wait for threads to finish
         server_control_thread.join()
         updating_subscribers_thread.join()
 
+        # Create fake connections to close the subscribing and publishing threads
         fake_subscribing_network = Network.from_address(self._host, INCOMING_PORT)
         fake_subscribing_network.close()
 
@@ -75,6 +77,7 @@ class Server:
         fake_publishing_network.send("LEFT")
         fake_publishing_network.close()
 
+        # Wait for threads to finish
         subscribing_thread.join()
         publishing_thread.join()
 
