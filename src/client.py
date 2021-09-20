@@ -28,7 +28,7 @@ class Client:
         control_thread.start()
         
         # Create a thread for controlling client from terminal
-        client_control_thread = thread.Thread(target=self._client_control)
+        client_control_thread = threading.Thread(target=self._client_control)
         client_control_thread.start()
 
         # Set up game window
