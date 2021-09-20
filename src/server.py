@@ -18,19 +18,19 @@ PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
 class Server:
     def __init__(self):
         # Get server's host IPv4 address
-        host = socket.gethostbyname(socket.gethostname())
+        self._host = socket.gethostbyname(socket.gethostname())
 
         # Establish connection where clients can get game state update
         self._server_subscribe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_subscribe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_subscribe.bind((host, INCOMING_PORT))
+        self._server_subscribe.bind((self._host, INCOMING_PORT))
 
         # Establish connection where clients send control commands
         self._server_publish = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_publish.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_publish.bind((host, OUTGOING_PORT))
+        self._server_publish.bind((self._host, OUTGOING_PORT))
 
-        print(f"[NETWORK] ({host}, {INCOMING_PORT})")
+        print(f"[NETWORK] ({self._host}, {INCOMING_PORT})")
 
         self._currentID = 1
         self._positions = {}
@@ -53,22 +53,30 @@ class Server:
         """
         Set up threads for handling connections
         """
-        subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network)
+        subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network, daemon=True)
         subscribing_thread.start()
 
-        updating_subscribers_thread = threading.Thread(target=self._update_subscribers)
+        updating_subscribers_thread = threading.Thread(target=self._update_subscribers, daemon=True)
         updating_subscribers_thread.start()
 
-        publishing_thread = threading.Thread(target=self._dispatch_publishing_network)
+        publishing_thread = threading.Thread(target=self._dispatch_publishing_network, daemon=True)
         publishing_thread.start()
 
-        server_control_thread = threading.Thread(target=self._server_control)
+        server_control_thread = threading.Thread(target=self._server_control, daemon=True)
         server_control_thread.start()
 
-        subscribing_thread.join()
-        updating_subscribers_thread.join()
-        publishing_thread.join()
         server_control_thread.join()
+        updating_subscribers_thread.join()
+
+        fake_subscribing_network = Network.from_address(self._host, INCOMING_PORT)
+        fake_subscribing_network.close()
+
+        fake_publishing_network = Network.from_address(self._host, OUTGOING_PORT)
+        fake_publishing_network.send("LEFT")
+        fake_publishing_network.close()
+
+        subscribing_thread.join()
+        publishing_thread.join()
 
     def _dispatch_subscribing_network(self):
         """
@@ -83,8 +91,6 @@ class Server:
 
             # Add client connection to list for sending game state update
             self._subscribed_networks.append(client_network)
-
-            print("[SERVER] subscribed: ", client_addr)
 
     def _dispatch_publishing_network(self):
         """
@@ -106,8 +112,6 @@ class Server:
             # Right team
             else:
                 self._positions[self._currentID] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
-
-            print("[SERVER] publish to: ", client_addr)
 
             # Create a thread for receiving client's commands
             client_thread = threading.Thread(target=self._handle_publisher, args=(client_network, self._currentID))
@@ -185,7 +189,6 @@ class Server:
                     client_update_network.send(data)
                 except Exception as e:
                     # Mark client connection for removal when client disconnects
-                    print(e)
                     removing_indexes.append(index)
 
             # Remove disconnected clients from the game
@@ -244,14 +247,12 @@ class Server:
 
             except Exception as e:
                 # Remove client's paddle from the game
-                print(e)
                 self._thread_lock.acquire()
                 del self._paddles[client_id]
                 self._thread_lock.release()
                 break
 
         client_control_network.close()
-        print("Connection closed")
 
     def _server_control(self):
         """
@@ -293,6 +294,7 @@ class Server:
 
             else:
                 print("Unknown command")
+
 
 if __name__ == "__main__":
     pygame.init()
