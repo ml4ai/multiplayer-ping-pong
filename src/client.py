@@ -36,11 +36,21 @@ class Client:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self._running = False
+
+                    # Notify server that client closes the connection
+                    self._to_server.send('x')
+
             if not self._running:
                 break
 
             # Get update from server about the state of the game
             game_state = self._from_server.receive()
+
+            # Exit game when server is closed
+            if game_state["exit_request"]:
+                self._running = False
+                print("Server closed")
+                break
 
             # Add sprites to sprite group
             all_sprites_list = pygame.sprite.Group()
@@ -70,9 +80,6 @@ class Client:
 
             # Update client screen
             pygame.display.flip()
-
-        # Notify server that client closes the connection
-        self._to_server.send('x')
         
         # Close receiving connection
         self._from_server.close()

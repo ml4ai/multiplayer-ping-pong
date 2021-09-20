@@ -22,6 +22,8 @@ class AIClient:
 
         self._paddle_id = -1 # store paddle id
 
+        self._running = True
+
     def run(self):
         """
         Run ping pong on client's side
@@ -30,8 +32,15 @@ class AIClient:
         control_thread = threading.Thread(target=self._send_input)
         control_thread.start()
 
-        while True:
+        while self._running:
             game_state = self._from_server.receive()
+
+            # Exit game when server is closed
+            if game_state["exit_request"]:
+                self._running = False
+                print("Server closed")
+                break
+
             for object_id, position in game_state["positions"].items():
                 # Get ball position (located at index 0)
                 if int(object_id) == 0:
@@ -39,6 +48,8 @@ class AIClient:
                 # Get AI's paddle's location
                 elif int(object_id) == self._paddle_id:
                     self._paddle_position = position
+
+        control_thread.join()
 
     def _send_input(self):
         """
@@ -51,7 +62,7 @@ class AIClient:
         self._paddle_id = int(self._to_server.receive())
 
         clock = pygame.time.Clock() # Control the rate of sending data to server
-        while True:
+        while self._running:
             # Send control commands to server
             # Note that positions specify the location of the top left corners of the sprites
 
