@@ -38,7 +38,7 @@ python src/client.py <host> <port> <TEAM>
 
 where `<TEAM>` is `LEFT` or `RIGHT`.
 
-To exit the game, close the game screen.
+To exit the game, close the game screen or type `exit` into the terminal.
 
 DANGER: Do not interrupt the game from the terminal.
 
@@ -53,3 +53,5 @@ python src/ai_client.py <host> <port> <TEAM>
 where `<TEAM>` is `LEFT` or `RIGHT`.
 
 To exit the AI client, type `exit` on the terminal that runs the AI client.
+
+DANGER: Do not interrupt the game from the terminal.
