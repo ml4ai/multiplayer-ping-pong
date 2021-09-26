@@ -2,6 +2,8 @@ import socket
 import threading
 import pygame
 import sys
+import json
+from select import select
 import config as cfg
 from utils import Network
 from utils import Paddle
@@ -14,26 +16,30 @@ PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
 
 
 class Server:
-    def __init__(self):
+    def __init__(self, port: int):
         # Get server's host IPv4 address
         self._host = socket.gethostbyname_ex(socket.gethostname())[-1][-1]
-        self._port = 5050 if len(sys.argv) < 2 else int(sys.argv[1])
+        self._port = port
+
+        self._to_client_connections = []
+        self._from_client_connections = {}
 
         # Establish connection where clients can get game state update
-        self._server_subscribe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_subscribe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_subscribe.bind((self._host, self._port))
+        self._to_client_request = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._to_client_request.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
+        self._to_client_request.bind((self._host, self._port))
+        self._to_client_request.setblocking(False)
 
         # Establish connection where clients send control commands
-        self._server_publish = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_publish.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_publish.bind((self._host, self._port + 1))
+        self._from_client_request = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._from_client_request.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
+        self._from_client_request.bind((self._host, self._port + 1))
+        self._from_client_request.setblocking(False)
 
         print(f"[NETWORK] ({self._host}, {self._port})")
 
         self._currentID = 1
         self._positions = {}
-        self._subscribed_networks = []
 
         self._ball = Ball()
         self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
@@ -52,80 +58,71 @@ class Server:
         """
         Set up threads for handling connections
         """
-        subscribing_thread = threading.Thread(target=self._dispatch_subscribing_network, daemon=True)
-        subscribing_thread.start()
+        to_client_request_thread = threading.Thread(target=self._dispatch_to_client_request, daemon=True)
+        to_client_request_thread.start()
 
-        updating_subscribers_thread = threading.Thread(target=self._update_subscribers, daemon=True)
-        updating_subscribers_thread.start()
+        from_client_request_thread = threading.Thread(target=self._dispatch_from_client_request, daemon=True)
+        from_client_request_thread.start()
 
-        publishing_thread = threading.Thread(target=self._dispatch_publishing_network, daemon=True)
-        publishing_thread.start()
+        to_client_update_state_thread = threading.Thread(target=self._to_client_update_state, daemon=True)
+        to_client_update_state_thread.start()
 
         server_control_thread = threading.Thread(target=self._server_control, daemon=True)
         server_control_thread.start()
 
         # Wait for threads to finish
         server_control_thread.join()
-        updating_subscribers_thread.join()
-
-        # Create fake connections to close the subscribing and publishing threads
-        fake_subscribing_network = Network.from_address(self._host, self._port)
-        fake_subscribing_network.close()
-
-        fake_publishing_network = Network.from_address(self._host, self._port + 1)
-        fake_publishing_network.send("LEFT")
-        fake_publishing_network.close()
+        to_client_update_state_thread.join()
 
         # Wait for threads to finish
-        subscribing_thread.join()
-        publishing_thread.join()
+        to_client_request_thread.join()
+        from_client_request_thread.join()
 
         # Close server connection
-        self._server_subscribe.close()
-        self._server_publish.close()
+        self._to_client_request.close()
+        self._from_client_request.close()
 
-    def _dispatch_subscribing_network(self):
+    def _dispatch_to_client_request(self):
         """
         Dispatch client's connection for receiving game state updates from server
         """
         # Listen for client connection
-        self._server_subscribe.listen()
+        self._to_client_request.listen()
 
         while not self._exit_request:
-            client_conn, client_addr = self._server_subscribe.accept()
-            client_network = Network(client_conn)
+            readable, _, _ = select([self._to_client_request], [], [self._to_client_request], 0.1)
+            if readable:
+                client_conn, client_addr = readable[0].accept()
+                client_conn.setblocking(False)
+                self._to_client_connections.append(client_conn)
+                print("Sending replies to " + client_addr)
 
-            # Add client connection to list for sending game state update
-            self._subscribed_networks.append(client_network)
-
-    def _dispatch_publishing_network(self):
+    def _dispatch_from_client_request(self):
         """
         Establish connection to receive clients' command
         """
         # Listen for client connection
-        self._server_publish.listen()
+        self._from_client_request.listen()
 
         while not self._exit_request:
-            client_conn, client_addr = self._server_publish.accept()
-            client_network = Network(client_conn)
+            readable, _, _ = select([self._from_client_request], [], [self._from_client_request], 0.1)
 
-            # Clients specify what team they want to be on
-            data = client_network.receive()
+            if readable:
+                client_conn, client_addr = readable[0].accept()
+                client_conn.setblocking(False)
 
-            # Left team
-            if data == "LEFT":
+                _, writable, _ = select([], [client_conn], [client_conn])
+                writable[0].send(str(self._currentID).encode('utf-8'))
+
+                self._from_client_connections[client_conn] = self._currentID
                 self._positions[self._currentID] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
-            # Right team
-            else:
-                self._positions[self._currentID] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
+                self._paddles[self._currentID] = Paddle(self._positions[self._currentID], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
 
-            # Create a thread for receiving client's commands
-            client_thread = threading.Thread(target=self._handle_publisher, args=(client_network, self._currentID))
-            client_thread.start()
+                print("Receiving commands from: " + client_addr)
 
-            self._currentID += 1
+                self._currentID += 1
 
-    def _update_subscribers(self):
+    def _to_client_update_state(self):
         """
         Update game state then send game state updates to clients
         """
@@ -183,78 +180,74 @@ class Server:
                 self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
 
             data = {}
+            data["message_type"] = "state"
             data["score_left"] = self._score_left
             data["score_right"] = self._score_right
             data["positions"] = self._positions
-            data["exit_request"] = False
 
-            removing_indexes = []
-            for index, client_update_network in enumerate(self._subscribed_networks):
-                try:
-                    # Send game state update to client
-                    client_update_network.send(data)
-                except Exception as e:
-                    # Mark client connection for removal when client disconnects
-                    removing_indexes.append(index)
-
-            # Remove disconnected clients from the game
-            offset = 0
-            for index in removing_indexes:
-                self._subscribed_networks[index - offset].close()
-                del self._subscribed_networks[index - offset]
-                offset += 1
-                print("Connection closed")
+            _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0)
+            for connection in writable:
+                connection.send(json.dumps(data).encode('utf-8'))
+            
+            for connection in exceptional:
+                connection.close()
+                self._to_client_connections.remove(connection)
             
             # Limit loop rate to 120 loops per second
             clock.tick(120)
 
-        for client_update_network in self._subscribed_networks:
-            data["exit_request"] = True
-            client_update_network.send(data)
-            client_update_network.close()
+        while self._to_client_connections:
+            _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections)
 
-    def _handle_publisher(self, client_control_network, client_id):
+            for connection in writable:
+                data = {}
+                data["message_type"] = "command"
+                data["message"] = "CLOSE"
+                connection.send(data)
+                connection.close()
+                self._to_client_connections.remove(connection)
+            
+            for connection in exceptional:
+                connection.close()
+                self._to_client_connections.remove(connection)
+            
+            clock.tick(120)
+
+    def _from_client_commands(self):
         """
-        Update game state with client's command
+        Handle clients' commands
         """
-        # Initialize client's paddle
-        player_paddle = Paddle(self._positions[client_id], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
-        self._thread_lock.acquire()
-        self._paddles[client_id] = player_paddle
-        self._thread_lock.release()
-
-        # Notify client its paddle id
-        client_control_network.send(client_id)
-
         while not self._exit_request:
-            try:
-                # Get command from client
-                command = client_control_network.receive()
+            readable, _, exceptional = select(self._from_client_connections.keys(), [], self._from_client_connections.keys())
 
-                # Client exits
-                if command == 'x':
+            for connection in readable:
+                client_id = self._from_client_connections[connection]
+
+                command = json.loads(connection.recv(1024).decode('utf-8'))
+                if command == "LEFT":
+                    self._positions[client_id] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
+                    self._paddles[client_id].rect.x = PADDLE_X_LEFT
+                    self._paddles[client_id].rect.y = PADDLE_Y_CENTER
+                elif command == "RIGHT":
+                    self._positions[client_id] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
+                    self._paddles[client_id].rect.x = PADDLE_X_RIGHT
+                    self._paddles[client_id].rect.y = PADDLE_Y_CENTER
+                elif command == "UP":
+                    self._positions[client_id][1] = self._paddles[client_id].move_up()
+                elif command == "DOWN":
+                    self._positions[client_id][1] = self._paddles[client_id].move_down()
+                elif command == "CLOSE":
+                    connection.close()
+                    del self._from_client_connections[connection]
                     del self._positions[client_id]
-                    self._thread_lock.acquire()
                     del self._paddles[client_id]
-                    self._thread_lock.release()
-                    break
 
-                # Client moves paddle up
-                elif not self._game_paused and command == "UP":
-                    self._positions[client_id][1] = player_paddle.move_up()
+            for connection in exceptional:
+                connection.close()
+                del self._from_client_connections[connection]
 
-                # Client moves paddle down
-                elif not self._game_paused and command == "DOWN":
-                    self._positions[client_id][1] = player_paddle.move_down()
-
-            except Exception as e:
-                # Remove client's paddle from the game
-                self._thread_lock.acquire()
-                del self._paddles[client_id]
-                self._thread_lock.release()
-                break
-
-        client_control_network.close()
+        for connection in self._from_client_connections:
+            connection.close()
 
     def _server_control(self):
         """
@@ -301,5 +294,7 @@ class Server:
 if __name__ == "__main__":
     pygame.init()
 
-    server = Server()
+    port = 5050 if len(sys.argv) < 2 else int(sys.argv[1])
+
+    server = Server(port)
     server.run()
