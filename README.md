@@ -13,10 +13,10 @@ pip3 install -r requirements.txt
 Run the server script.
 
 ```python
-python3 src/server.py <host>
+python3 src/server.py <port>
 ```
 
-where `<host>` is IPv4 address of host computer.
+where `<port>` is port reserved for server.
 
 Available server commands:
 
@@ -36,7 +36,7 @@ Use the host IPv4 address and port specified by the server to start the client.
 python3 src/client.py <host> <port> <TEAM>
 ```
 
-where `<TEAM>` is `LEFT` or `RIGHT`.
+where `<host>` is IPv4 address of the server, `<port>` is port used by the server, and `<TEAM>` is `LEFT` or `RIGHT`.
 
 To exit the game, close the game screen or type `exit` into the terminal.
 
@@ -50,7 +50,7 @@ Use the host IPv4 address and port specified by the server to start the AI clien
 python3 src/ai_client.py <host> <port> <TEAM>
 ```
 
-where `<TEAM>` is `LEFT` or `RIGHT`.
+where `<host>` is IPv4 address of the server, `<port>` is port used by the server, and `<TEAM>` is `LEFT` or `RIGHT`.
 
 To exit the AI client, type `exit` on the terminal that runs the AI client.
 
