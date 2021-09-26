@@ -7,9 +7,6 @@ from utils import Network
 from utils import Paddle
 from utils import Ball
 
-INCOMING_PORT = cfg.SERVER_PORT
-OUTGOING_PORT = INCOMING_PORT + 1
-
 PADDLE_X_LEFT = 0
 PADDLE_X_RIGHT = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH
 
@@ -19,19 +16,20 @@ PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
 class Server:
     def __init__(self):
         # Get server's host IPv4 address
-        self._host = sys.argv[1]
+        self._host = socket.gethostbyname_ex(socket.gethostname())[-1][-1]
+        self._port = 5050 if len(sys.argv) < 2 else int(sys.argv[1])
 
         # Establish connection where clients can get game state update
         self._server_subscribe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_subscribe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_subscribe.bind((self._host, INCOMING_PORT))
+        self._server_subscribe.bind((self._host, self._port))
 
         # Establish connection where clients send control commands
         self._server_publish = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_publish.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Reuse socket
-        self._server_publish.bind((self._host, OUTGOING_PORT))
+        self._server_publish.bind((self._host, self._port + 1))
 
-        print(f"[NETWORK] ({self._host}, {INCOMING_PORT})")
+        print(f"[NETWORK] ({self._host}, {self._port})")
 
         self._currentID = 1
         self._positions = {}
@@ -71,10 +69,10 @@ class Server:
         updating_subscribers_thread.join()
 
         # Create fake connections to close the subscribing and publishing threads
-        fake_subscribing_network = Network.from_address(self._host, INCOMING_PORT)
+        fake_subscribing_network = Network.from_address(self._host, self._port)
         fake_subscribing_network.close()
 
-        fake_publishing_network = Network.from_address(self._host, OUTGOING_PORT)
+        fake_publishing_network = Network.from_address(self._host, self._port + 1)
         fake_publishing_network.send("LEFT")
         fake_publishing_network.close()
 
