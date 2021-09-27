@@ -6,13 +6,13 @@ class Paddle(pygame.sprite.Sprite):
     """
     Paddle pygame sprite controlled by the client.
     """
-    def __init__(self, position, upper_height: int, lower_height: int):
+    def __init__(self, position, upper_height: int, lower_height: int, color=cfg.FOREGROUND_COLOR):
         # Set up pygame sprite
         super().__init__()
         self.image = pygame.Surface((cfg.PADDLE_WIDTH, cfg.PADDLE_HEIGHT))
         self.image.fill((0, 0 ,0))
         self.image.set_colorkey((0, 0 ,0))
-        pygame.draw.rect(self.image, cfg.FOREGROUND_COLOR, (0, 0, cfg.PADDLE_WIDTH, cfg.PADDLE_HEIGHT))
+        pygame.draw.rect(self.image, color, (0, 0, cfg.PADDLE_WIDTH, cfg.PADDLE_HEIGHT))
 
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = position
