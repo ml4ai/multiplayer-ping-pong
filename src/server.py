@@ -120,9 +120,11 @@ class Server:
                     print("Connection closed")
                     continue
 
+                self._thread_lock.acquire()
                 self._from_client_connections[client_conn] = self._currentID
                 self._positions[self._currentID] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
                 self._paddles[self._currentID] = Paddle(self._positions[self._currentID], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
+                self._thread_lock.release()
 
                 print("Receiving commands from [" + str(self._currentID) + ", " + client_addr[0] + ", " + str(client_addr[1]) + ']')
 
@@ -195,7 +197,7 @@ class Server:
             for connection in writable:
                 try:
                     send(connection, data)
-                except BrokenPipeError:
+                except:
                     print("Connection closed")
                     connection.close()
                     self._to_client_connections.remove(connection)
@@ -259,9 +261,12 @@ class Server:
                     self._positions[client_id][1] = self._paddles[client_id].move_down()
                 elif command == "CLOSE":
                     connection.close()
+
+                    self._thread_lock.acquire()
                     del self._from_client_connections[connection]
                     del self._positions[client_id]
                     del self._paddles[client_id]
+                    self._thread_lock.release()
 
             for connection in exceptional:
                 connection.close()

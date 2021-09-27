@@ -72,7 +72,7 @@ class Client:
             # Get update from server about the state of the game
             readable, _, _ = select([self._from_server], [], [self._from_server])
             if readable:
-                message = readable[0].recv(512)
+                message = readable[0].recv(cfg.HEADER)
 
                 if not message:
                     continue
