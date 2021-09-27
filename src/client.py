@@ -1,9 +1,12 @@
 import pygame
 import sys
 import threading
+import socket
+from select import select
+import json
+from utils import send
 from utils import Paddle
 from utils import Ball
-from utils import Network
 import config as cfg
 
 class Client:
@@ -13,9 +16,24 @@ class Client:
 
         self._team = sys.argv[3]
 
+        self._client_id = -1
+
         # Establish two-channel connection to server
-        self._from_server = Network.from_address(host, port)
-        self._to_server = Network.from_address(host, port + 1)
+        self._from_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._from_server.connect((host, port))
+        self._from_server.setblocking(False)
+
+        self._to_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._to_server.connect((host, port + 1))
+        self._to_server.setblocking(False)
+
+        readable, _, _ = select([self._to_server], [], [self._to_server])
+        if readable:
+            self._client_id = int(readable[0].recv(cfg.HEADER).decode('utf-8'))
+        else:
+            raise RuntimeError("Fail to establish connection with server")
+
+        print("Connected to server, paddle ID: " + str(self._client_id))
 
         self._running = True
 
@@ -42,23 +60,39 @@ class Client:
                     self._running = False
 
                     # Notify server that client closes the connection
-                    self._to_server.send('x')
+                    _, writable, _ = select([], [self._to_server], [self._to_server])
+                    if writable:
+                        send(writable[0], "CLOSE")
+                    else:
+                        raise RuntimeError("Lost connection with server")
 
             if not self._running:
                 break
 
             # Get update from server about the state of the game
-            game_state = self._from_server.receive()
+            readable, _, _ = select([self._from_server], [], [self._from_server])
+            if readable:
+                message = readable[0].recv(512)
 
-            # Exit game when server is closed
-            if game_state["exit_request"]:
+                if not message:
+                    continue
+
+                data = json.loads(message.decode('utf-8'))
+
+                # Exit game when server is closed
+                if data["message_type"] == "command":
+                    if data["message"] == "CLOSE":
+                        self._running = False
+                        print("Server closed")
+                        break
+            else:
                 self._running = False
                 print("Server closed")
                 break
 
             # Add sprites to sprite group
             all_sprites_list = pygame.sprite.Group()
-            for object_id, position in game_state["positions"].items():
+            for object_id, position in data["positions"].items():
                 # The ball's position is at index 0
                 if int(object_id) == 0:
                     ball = Ball()
@@ -77,9 +111,9 @@ class Client:
 
             #Display scores:
             font = pygame.font.Font(None, 74)
-            text = font.render(str(game_state["score_left"]), 1, (255, 255, 255))
+            text = font.render(str(data["score_left"]), 1, (255, 255, 255))
             screen.blit(text, (420,10))
-            text = font.render(str(game_state["score_right"]), 1, (255, 255, 255))
+            text = font.render(str(data["score_right"]), 1, (255, 255, 255))
             screen.blit(text, (650,10))
 
             # Update client screen
@@ -100,7 +134,11 @@ class Client:
         Send user's input command to server
         """
         # Notify server the team the client wants to be on
-        self._to_server.send(self._team)
+        _, writable, _ = select([], [self._to_server], [self._to_server])
+        if writable:
+            send(writable[0], self._team)
+        else:
+            raise RuntimeError("Lost connection with server")
 
         clock = pygame.time.Clock() # Control the rate of sending data to server
         while self._running:
@@ -109,9 +147,22 @@ class Client:
 
             # Send control commands to server
             if keys[pygame.K_UP]:
-                self._to_server.send("UP")
+                _, writable, _ = select([], [self._to_server], [self._to_server])
+                if writable:
+                    try:
+                        send(writable[0], "UP")
+                    except BrokenPipeError:
+                        print("Server closed")
+                        self._running = False
+
             elif keys[pygame.K_DOWN]:
-                self._to_server.send("DOWN")
+                _, writable, _ = select([], [self._to_server], [self._to_server])
+                if writable:
+                    try:
+                        send(writable[0], "DOWN")
+                    except BrokenPipeError:
+                        print("Server closed")
+                        self._running = False
             
             # Limit loop rate to 120 loops per second
             clock.tick(120)
@@ -124,11 +175,21 @@ class Client:
         Control client
         """
         while self._running:
-            command = input()
+            readable, _, _ = select([sys.stdin], [], [], 0.5)
+
+            if not readable:
+                continue
+
+            command = readable[0].readline().strip()
             
             if command == "exit":
                 self._running = False
-                self._to_server.send('x')
+                _, writable, _ = select([], [self._to_server], [self._to_server], 0.1)
+                if writable:
+                    try:
+                        send(writable[0], "CLOSE")
+                    except BrokenPipeError:
+                        print("Server closed")
             else:
                 print("Unknown command")
 

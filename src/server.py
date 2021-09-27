@@ -5,9 +5,9 @@ import sys
 import json
 from select import select
 import config as cfg
-from utils import Network
 from utils import Paddle
 from utils import Ball
+from utils import send
 
 PADDLE_X_LEFT = 0
 PADDLE_X_RIGHT = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH
@@ -64,6 +64,9 @@ class Server:
         from_client_request_thread = threading.Thread(target=self._dispatch_from_client_request, daemon=True)
         from_client_request_thread.start()
 
+        from_client_commands_thread = threading.Thread(target=self._from_client_commands, daemon=True)
+        from_client_commands_thread.start()
+
         to_client_update_state_thread = threading.Thread(target=self._to_client_update_state, daemon=True)
         to_client_update_state_thread.start()
 
@@ -73,10 +76,9 @@ class Server:
         # Wait for threads to finish
         server_control_thread.join()
         to_client_update_state_thread.join()
-
-        # Wait for threads to finish
         to_client_request_thread.join()
         from_client_request_thread.join()
+        from_client_commands_thread.join()
 
         # Close server connection
         self._to_client_request.close()
@@ -95,7 +97,7 @@ class Server:
                 client_conn, client_addr = readable[0].accept()
                 client_conn.setblocking(False)
                 self._to_client_connections.append(client_conn)
-                print("Sending replies to " + client_addr)
+                print("Sending replies to [" + client_addr[0] + ", " + str(client_addr[1]) + ']')
 
     def _dispatch_from_client_request(self):
         """
@@ -112,13 +114,17 @@ class Server:
                 client_conn.setblocking(False)
 
                 _, writable, _ = select([], [client_conn], [client_conn])
-                writable[0].send(str(self._currentID).encode('utf-8'))
+                try:
+                    send(writable[0], self._currentID)
+                except BrokenPipeError:
+                    print("Connection closed")
+                    continue
 
                 self._from_client_connections[client_conn] = self._currentID
                 self._positions[self._currentID] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
                 self._paddles[self._currentID] = Paddle(self._positions[self._currentID], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
 
-                print("Receiving commands from: " + client_addr)
+                print("Receiving commands from [" + str(self._currentID) + ", " + client_addr[0] + ", " + str(client_addr[1]) + ']')
 
                 self._currentID += 1
 
@@ -187,7 +193,12 @@ class Server:
 
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0)
             for connection in writable:
-                connection.send(json.dumps(data).encode('utf-8'))
+                try:
+                    send(connection, data)
+                except BrokenPipeError:
+                    print("Connection closed")
+                    connection.close()
+                    self._to_client_connections.remove(connection)
             
             for connection in exceptional:
                 connection.close()
@@ -203,7 +214,12 @@ class Server:
                 data = {}
                 data["message_type"] = "command"
                 data["message"] = "CLOSE"
-                connection.send(data)
+
+                try:
+                    send(connection, data)
+                except BrokenPipeError:
+                    print("Connection closed")
+
                 connection.close()
                 self._to_client_connections.remove(connection)
             
@@ -218,12 +234,17 @@ class Server:
         Handle clients' commands
         """
         while not self._exit_request:
-            readable, _, exceptional = select(self._from_client_connections.keys(), [], self._from_client_connections.keys())
+            readable, _, exceptional = select(self._from_client_connections.keys(), [], self._from_client_connections.keys(), 0.2)
 
             for connection in readable:
                 client_id = self._from_client_connections[connection]
 
-                command = json.loads(connection.recv(1024).decode('utf-8'))
+                message = connection.recv(cfg.HEADER)
+
+                if not message:
+                    continue
+
+                command = json.loads(message.decode('utf-8'))
                 if command == "LEFT":
                     self._positions[client_id] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
                     self._paddles[client_id].rect.x = PADDLE_X_LEFT
