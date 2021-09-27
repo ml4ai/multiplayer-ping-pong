@@ -1,3 +1,3 @@
-from .network import Network
+from .network import send
 from .paddle import Paddle
 from .ball import Ball
