@@ -38,7 +38,12 @@ python3 src/client.py <host> <port> <TEAM>
 
 where `<host>` is IPv4 address of the server, `<port>` is port used by the server, and `<TEAM>` is `LEFT` or `RIGHT`.
 
-To exit the game, close the game screen or type `exit` into the terminal.
+Available client commands:
+
+- `h` or `help`: List of server commands
+- `exit`: Close the game
+- `left`: Change to left team
+- `right`: Change to right team
 
 DANGER: Do not interrupt the game from the terminal.
 
@@ -52,6 +57,11 @@ python3 src/ai_client.py <host> <port> <TEAM>
 
 where `<host>` is IPv4 address of the server, `<port>` is port used by the server, and `<TEAM>` is `LEFT` or `RIGHT`.
 
-To exit the AI client, type `exit` on the terminal that runs the AI client.
+Available client commands:
+
+- `h` or `help`: List of server commands
+- `exit`: Close the game
+- `left`: Change to left team
+- `right`: Change to right team
 
 DANGER: Do not interrupt the game from the terminal.
