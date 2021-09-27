@@ -182,12 +182,33 @@ class Client:
 
             command = readable[0].readline().strip()
             
-            if command == "exit":
+            if command == "h" or command == "help":
+                print("-----")
+                print("left: Change to left team")
+                print("right: Change to right team")
+                print("exit: Close the game")
+                print("h or help: List available commands")
+                print("-----")
+            elif command == "exit":
                 self._running = False
-                _, writable, _ = select([], [self._to_server], [self._to_server], 0.1)
+                _, writable, _ = select([], [self._to_server], [self._to_server], 1.0)
                 if writable:
                     try:
                         send(writable[0], "CLOSE")
+                    except BrokenPipeError:
+                        print("Server closed")
+            elif command == "left":
+                _, writable, _ = select([], [self._to_server], [self._to_server], 1.0)
+                if writable:
+                    try:
+                        send(writable[0], "LEFT")
+                    except BrokenPipeError:
+                        print("Server closed")
+            elif command == "right":
+                _, writable, _ = select([], [self._to_server], [self._to_server], 1.0)
+                if writable:
+                    try:
+                        send(writable[0], "RIGHT")
                     except BrokenPipeError:
                         print("Server closed")
             else:
