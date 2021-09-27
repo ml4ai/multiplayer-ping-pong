@@ -10,4 +10,4 @@ def send(connection, payload):
     payload_msg += b' ' * (HEADER - len(payload_msg))
 
     # Send payload
-    connection.send(payload_msg)
+    connection.sendall(payload_msg)

@@ -261,7 +261,6 @@ class Server:
                     self._positions[client_id][1] = self._paddles[client_id].move_down()
                 elif command == "CLOSE":
                     connection.close()
-
                     self._thread_lock.acquire()
                     del self._from_client_connections[connection]
                     del self._positions[client_id]
@@ -270,7 +269,11 @@ class Server:
 
             for connection in exceptional:
                 connection.close()
+                self._thread_lock.acquire()
                 del self._from_client_connections[connection]
+                del self._positions[client_id]
+                del self._paddles[client_id]
+                self._thread_lock.release()
 
         for connection in self._from_client_connections:
             connection.close()
