@@ -98,7 +98,9 @@ class Client:
                     ball = Ball()
                     ball.rect.x, ball.rect.y = position
                     all_sprites_list.add(ball)
-                # The paddles' positions start at index 1
+                elif int(object_id) == self._client_id:
+                    paddle = Paddle(position, 0, cfg.WINDOW_SIZE[1] - 100, cfg.PLAYER_COLOR)
+                    all_sprites_list.add(paddle)
                 else:
                     paddle = Paddle(position, 0, cfg.WINDOW_SIZE[1] - 100)
                     all_sprites_list.add(paddle)
