@@ -207,7 +207,10 @@ class Server:
                 self._to_client_connections.remove(connection)
             
             # Limit loop rate to 120 loops per second
-            clock.tick(120)
+            if self._game_paused:
+                clock.tick(2)
+            else:
+                clock.tick(120)
 
         while self._to_client_connections:
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections)
@@ -255,9 +258,9 @@ class Server:
                     self._positions[client_id] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
                     self._paddles[client_id].rect.x = PADDLE_X_RIGHT
                     self._paddles[client_id].rect.y = PADDLE_Y_CENTER
-                elif command == "UP":
+                elif not self._game_paused and command == "UP":
                     self._positions[client_id][1] = self._paddles[client_id].move_up()
-                elif command == "DOWN":
+                elif not self._game_paused and command == "DOWN":
                     self._positions[client_id][1] = self._paddles[client_id].move_down()
                 elif command == "CLOSE":
                     connection.close()
