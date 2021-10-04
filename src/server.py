@@ -16,9 +16,9 @@ PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
 
 
 class Server:
-    def __init__(self, port: int):
+    def __init__(self, host: str, port: int):
         # Get server's host IPv4 address
-        self._host = socket.gethostbyname_ex(socket.gethostname())[-1][-1]
+        self._host = host
         self._port = port
 
         self._to_client_connections = []
@@ -326,7 +326,10 @@ class Server:
 if __name__ == "__main__":
     pygame.init()
 
-    port = 5050 if len(sys.argv) < 2 else int(sys.argv[1])
+    assert len(sys.argv) >= 2
 
-    server = Server(port)
+    host = sys.argv[1]
+    port = 6060 if len(sys.argv) < 3 else int(sys.argv[2])
+
+    server = Server(host, port)
     server.run()

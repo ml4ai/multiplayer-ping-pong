@@ -61,7 +61,11 @@ class AIClient:
                 if not message:
                     continue
 
-                data = json.loads(message.decode('utf-8'))
+                try:
+                    data = json.loads(message.decode('utf-8'))
+                except json.decoder.JSONDecodeError as err:
+                    print(err)
+                    continue
 
                 # Exit game when server is closed
                 if data["message_type"] == "command":
