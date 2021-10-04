@@ -13,10 +13,10 @@ pip3 install -r requirements.txt
 Run the server script.
 
 ```python
-python3 src/server.py <port>
+python3 src/server.py <host> <port>
 ```
 
-where `<port>` is port reserved for server.
+where `<host>` is IPv4 address of the server, `<port>` is port reserved for server.
 
 Available server commands:
 
