@@ -249,7 +249,12 @@ class Server:
                 if not message:
                     continue
 
-                command = json.loads(message.decode('utf-8'))
+                try:
+                    command = json.loads(message.decode('utf-8'))
+                except json.decoder.JSONDecodeError as err:
+                    print(err)
+                    continue
+
                 if command == "LEFT":
                     self._positions[client_id] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
                     self._paddles[client_id].rect.x = PADDLE_X_LEFT
