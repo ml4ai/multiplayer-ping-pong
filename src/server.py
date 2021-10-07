@@ -291,7 +291,12 @@ class Server:
         Control the server 
         """
         while not self._exit_request:
-            command = input()
+            readable, _, _ = select([sys.stdin], [], [], 0.5)
+
+            if not readable:
+                continue
+
+            command = readable[0].readline().strip()
             
             if command == "h" or command == "help":
                 print("-----")
