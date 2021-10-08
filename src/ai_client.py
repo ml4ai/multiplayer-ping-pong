@@ -125,8 +125,8 @@ class AIClient:
                         print("Server closed")
                         self._running = False
             
-            # Limit loop rate to 120 loops per second
-            clock.tick(120)
+            # Limit loop rate to 60 loops per second
+            clock.tick(60)
 
     def _client_control(self):
         """

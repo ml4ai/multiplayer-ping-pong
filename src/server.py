@@ -146,7 +146,7 @@ class Server:
                 self._thread_lock.acquire()
                 for paddle in self._paddles.values():
                     if pygame.sprite.collide_mask(self._ball, paddle):
-                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.15))
+                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.35))
                         
                         if self._ball.rect.x < cfg.WINDOW_SIZE[0] / 2:
                             self._ball.rect.x = cfg.PADDLE_WIDTH
@@ -193,7 +193,7 @@ class Server:
             data["score_right"] = self._score_right
             data["positions"] = self._positions
 
-            _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0)
+            _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0.0)
             for connection in writable:
                 try:
                     send(connection, data)
@@ -206,11 +206,11 @@ class Server:
                 connection.close()
                 self._to_client_connections.remove(connection)
             
-            # Limit loop rate to 120 loops per second
+            # Limit loop rate to 60 loops per second
             if self._game_paused:
                 clock.tick(2)
             else:
-                clock.tick(120)
+                clock.tick(60)
 
         while self._to_client_connections:
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections)
@@ -232,7 +232,7 @@ class Server:
                 connection.close()
                 self._to_client_connections.remove(connection)
             
-            clock.tick(120)
+            clock.tick(60)
 
     def _from_client_commands(self):
         """
