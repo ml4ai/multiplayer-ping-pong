@@ -25,7 +25,7 @@ class Ball(pygame.sprite.Sprite):
         self.rect.y = CENTER_Y
 
         # Initialize ball velocity
-        self.velocity = [cfg.BALL_X_SPEED, randint(-5, 5)]
+        self.velocity = [cfg.BALL_X_SPEED, randint(-cfg.BALL_X_SPEED, cfg.BALL_X_SPEED)]
 
     def update(self):
         """
@@ -49,11 +49,11 @@ class Ball(pygame.sprite.Sprite):
         # Randomly generate y velocity, following its previous trajectory
         else:
             velocity_y_sign = copysign(1, self.velocity[1])
-            self.velocity[1] = velocity_y_sign * randint(2, 5)
+            self.velocity[1] = velocity_y_sign * randint(4, cfg.BALL_X_SPEED)
     
     def reset_center(self):
         self.rect.x = CENTER_X
         self.rect.y = CENTER_Y
 
         # Re-initialize ball velocity
-        self.velocity = [cfg.BALL_X_SPEED, randint(-5, 5)]
+        self.velocity = [cfg.BALL_X_SPEED, randint(-cfg.BALL_X_SPEED, cfg.BALL_X_SPEED)]
