@@ -41,11 +41,10 @@ class Server:
 
         print(f"[NETWORK] ({self._host}, {self._port})")
 
-        self._currentID = 1
         self._positions = {}
 
         self._ball = Ball()
-        self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
+        self._positions["ball"] = [self._ball.rect.x, self._ball.rect.y]
 
         self._paddles = {}
 
@@ -61,8 +60,8 @@ class Server:
         if not os.path.exists(csv_data_path):
             os.makedirs(csv_data_path)
 
-        csv_file = open(csv_data_path + str(int(time())), 'w', newline='')
-        self._csv_writer = csv.writer(csv_file, delimiter=';')
+        self._csv_file = open(csv_data_path + str(int(time())) + ".csv", 'w', newline='')
+        self._csv_writer = csv.writer(self._csv_file, delimiter=';')
 
     def run(self):
         """
@@ -94,6 +93,8 @@ class Server:
         self._to_client_request.close()
         self._from_client_request.close()
 
+        self._csv_file.close()
+
     def _dispatch_to_client_request(self):
         """
         Dispatch client's connection for receiving game state updates from server
@@ -123,22 +124,20 @@ class Server:
                 client_conn, client_addr = readable[0].accept()
                 client_conn.setblocking(False)
 
-                _, writable, _ = select([], [client_conn], [client_conn])
-                try:
-                    send(writable[0], self._currentID)
-                except BrokenPipeError:
+                readable, _, _ = select([client_conn], [], [client_conn])
+                if readable:
+                    client_name = json.loads(readable[0].recv(cfg.HEADER).decode('utf-8'))
+                else:
                     print("Connection closed")
                     continue
 
                 self._thread_lock.acquire()
-                self._from_client_connections[client_conn] = self._currentID
-                self._positions[self._currentID] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
-                self._paddles[self._currentID] = Paddle(self._positions[self._currentID], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
+                self._from_client_connections[client_conn] = client_name
+                self._positions[client_name] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
+                self._paddles[client_name] = Paddle(self._positions[client_name], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
                 self._thread_lock.release()
 
-                print("Receiving commands from [" + str(self._currentID) + ", " + client_addr[0] + ", " + str(client_addr[1]) + ']')
-
-                self._currentID += 1
+                print("Receiving commands from [" + client_name + ", " + client_addr[0] + ", " + str(client_addr[1]) + ']')
 
     def _to_client_update_state(self):
         """
@@ -195,7 +194,7 @@ class Server:
                         self._ball.velocity[1] = -self._ball.velocity[1]
 
                 # Store game state
-                self._positions[0] = [self._ball.rect.x, self._ball.rect.y]
+                self._positions["ball"] = [self._ball.rect.x, self._ball.rect.y]
 
             data = {}
             data["message_type"] = "state"
@@ -255,7 +254,7 @@ class Server:
             readable, _, exceptional = select(self._from_client_connections.keys(), [], self._from_client_connections.keys(), 0.2)
 
             for connection in readable:
-                client_id = self._from_client_connections[connection]
+                client_name = self._from_client_connections[connection]
 
                 message = connection.recv(cfg.HEADER)
 
@@ -269,31 +268,31 @@ class Server:
                     continue
 
                 if command == "LEFT":
-                    self._positions[client_id] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
-                    self._paddles[client_id].rect.x = PADDLE_X_LEFT
-                    self._paddles[client_id].rect.y = PADDLE_Y_CENTER
+                    self._positions[client_name] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
+                    self._paddles[client_name].rect.x = PADDLE_X_LEFT
+                    self._paddles[client_name].rect.y = PADDLE_Y_CENTER
                 elif command == "RIGHT":
-                    self._positions[client_id] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
-                    self._paddles[client_id].rect.x = PADDLE_X_RIGHT
-                    self._paddles[client_id].rect.y = PADDLE_Y_CENTER
+                    self._positions[client_name] = [PADDLE_X_RIGHT, PADDLE_Y_CENTER]
+                    self._paddles[client_name].rect.x = PADDLE_X_RIGHT
+                    self._paddles[client_name].rect.y = PADDLE_Y_CENTER
                 elif not self._game_paused and command == "UP":
-                    self._positions[client_id][1] = self._paddles[client_id].move_up()
+                    self._positions[client_name][1] = self._paddles[client_name].move_up()
                 elif not self._game_paused and command == "DOWN":
-                    self._positions[client_id][1] = self._paddles[client_id].move_down()
+                    self._positions[client_name][1] = self._paddles[client_name].move_down()
                 elif command == "CLOSE":
                     connection.close()
                     self._thread_lock.acquire()
                     del self._from_client_connections[connection]
-                    del self._positions[client_id]
-                    del self._paddles[client_id]
+                    del self._positions[client_name]
+                    del self._paddles[client_name]
                     self._thread_lock.release()
 
             for connection in exceptional:
                 connection.close()
                 self._thread_lock.acquire()
                 del self._from_client_connections[connection]
-                del self._positions[client_id]
-                del self._paddles[client_id]
+                del self._positions[client_name]
+                del self._paddles[client_name]
                 self._thread_lock.release()
 
         for connection in self._from_client_connections:
@@ -333,11 +332,11 @@ class Server:
 
                 self._ball.reset_center()
 
-                for id in self._positions.keys():
-                    if id == 0:
-                        self._positions[id] = [self._ball.rect.x, self._ball.rect.y]
+                for name in self._positions.keys():
+                    if name == "ball":
+                        self._positions[name] = [self._ball.rect.x, self._ball.rect.y]
                     else:
-                        self._positions[id][1] = PADDLE_Y_CENTER
+                        self._positions[name][1] = PADDLE_Y_CENTER
 
             elif command == "exit":
                 self._exit_request = True

@@ -15,7 +15,7 @@ class AIClient:
 
         self._team = sys.argv[3]
 
-        self._client_id = -1
+        self._player_name = sys.argv[4]
 
         # Monitor paddle's and ball's position
         self._ball_position = [0, 0]
@@ -30,13 +30,13 @@ class AIClient:
         self._to_server.connect((host, port + 1))
         self._to_server.setblocking(False)
 
-        readable, _, _ = select([self._to_server], [], [self._to_server])
-        if readable:
-            self._client_id = int(readable[0].recv(cfg.HEADER).decode('utf-8'))
-        else:
+        _, writable, _ = select([], [self._to_server], [self._to_server])
+        try:
+            send(writable[0], self._player_name)
+        except BrokenPipeError:
             raise RuntimeError("Fail to establish connection with server")
 
-        print("Connected to server, paddle ID: " + str(self._client_id))
+        print("Connected to server, paddle ID: " + self._player_name)
 
         self._running = True
 
@@ -78,12 +78,12 @@ class AIClient:
                 print("Server closed")
                 break
 
-            for object_id, position in data["positions"].items():
+            for name, position in data["positions"].items():
                 # The ball's position is at index 0
-                if int(object_id) == 0:
+                if name == "ball":
                     self._ball_position = position
                 # Get AI's paddle's location
-                elif int(object_id) == self._client_id:
+                elif name == self._player_name:
                     self._paddle_position = position
 
         control_thread.join()
