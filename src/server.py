@@ -3,6 +3,9 @@ import threading
 import pygame
 import sys
 import json
+import csv
+import os
+from time import time 
 from select import select
 import config as cfg
 from utils import Paddle
@@ -53,6 +56,13 @@ class Server:
         self._exit_request = False
 
         self._thread_lock = threading.Lock()
+
+        csv_data_path = "../data/"
+        if not os.path.exists(csv_data_path):
+            os.makedirs(csv_data_path)
+
+        csv_file = open(csv_data_path + str(int(time())), 'w', newline='')
+        self._csv_writer = csv.writer(csv_file, delimiter=';')
 
     def run(self):
         """
@@ -192,6 +202,9 @@ class Server:
             data["score_left"] = self._score_left
             data["score_right"] = self._score_right
             data["positions"] = self._positions
+
+            # Record state of the game
+            self._csv_writer.writerow([int(time()), json.dumps(data)])
 
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0.0)
             for connection in writable:
