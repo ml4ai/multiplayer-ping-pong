@@ -204,7 +204,7 @@ class Server:
             data["positions"] = self._positions
 
             # Record state of the game
-            self._csv_writer.writerow([int(time()), json.dumps(data)])
+            self._csv_writer.writerow([time(), json.dumps(data)])
 
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0.0)
             for connection in writable:
