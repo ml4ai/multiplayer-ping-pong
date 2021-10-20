@@ -156,7 +156,7 @@ class Server:
                 self._thread_lock.acquire()
                 for paddle in self._paddles.values():
                     if pygame.sprite.collide_mask(self._ball, paddle):
-                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * 0.35))
+                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * cfg.BALL_BOUNCE_ON_PADDLE_SCALE))
                         
                         if self._ball.rect.x < cfg.WINDOW_SIZE[0] / 2:
                             self._ball.rect.x = cfg.PADDLE_WIDTH
