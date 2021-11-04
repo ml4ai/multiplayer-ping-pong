@@ -7,7 +7,17 @@ import json
 from utils import send
 from utils import Paddle
 from utils import Ball
+
 import config as cfg
+
+if len(sys.argv) < 6:
+    raise RuntimeError(f"Not enough arguments, {len(sys.argv)}")
+elif sys.argv[5] == "SINGLE":
+    import config_single as cfg_team
+elif sys.argv[5] == "TEAM":
+    import config_team as cfg_team
+else:
+    raise RuntimeError("Must specify SINGLE or TEAM")
 
 class Client:
     def __init__(self):
@@ -99,14 +109,26 @@ class Client:
             for name, position in data["positions"].items():
                 # The ball's position is at index 0
                 if name == "ball":
-                    ball = Ball()
+                    ball = Ball(cfg_team.BALL_SIZE, cfg_team.BALL_X_SPEED)
                     ball.rect.x, ball.rect.y = position
                     all_sprites_list.add(ball)
                 elif name == self._player_name:
-                    paddle = Paddle(position, 0, cfg.WINDOW_SIZE[1] - 100, cfg.PLAYER_COLOR)
+                    paddle = Paddle(position, 
+                                    0, 
+                                    cfg.WINDOW_SIZE[1] - 100, 
+                                    cfg_team.PADDLE_WIDTH, 
+                                    cfg_team.PADDLE_HEIGHT, 
+                                    cfg_team.PADDLE_SPEED, 
+                                    cfg.PLAYER_COLOR)
                     all_sprites_list.add(paddle)
                 else:
-                    paddle = Paddle(position, 0, cfg.WINDOW_SIZE[1] - 100)
+                    paddle = Paddle(position, 
+                                    0, 
+                                    cfg.WINDOW_SIZE[1] - 100, 
+                                    cfg_team.PADDLE_WIDTH, 
+                                    cfg_team.PADDLE_HEIGHT, 
+                                    cfg_team.PADDLE_SPEED, 
+                                    cfg.FOREGROUND_COLOR)
                     all_sprites_list.add(paddle)
 
             # Draw background

@@ -7,6 +7,15 @@ import json
 from utils import send
 import config as cfg
 
+if len(sys.argv) < 6:
+    raise RuntimeError(f"Not enough arguments, {len(sys.argv)}")
+elif sys.argv[5] == "SINGLE":
+    import config_single as cfg_team
+elif sys.argv[5] == "TEAM":
+    import config_team as cfg_team
+else:
+    raise RuntimeError("Must specify SINGLE or TEAM")
+
 
 class AIClient:
     def __init__(self):
@@ -106,7 +115,7 @@ class AIClient:
             # Note that positions specify the location of the top left corners of the sprites
 
             # Go up when the ball is above the paddle
-            if (self._ball_position[1] + cfg.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg.PADDLE_HEIGHT / 2.0) < 10:
+            if (self._ball_position[1] + cfg_team.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg_team.PADDLE_HEIGHT / 2.0) < 10:
                 _, writable, _ = select([], [self._to_server], [self._to_server])
                 if writable:
                     try:
@@ -116,7 +125,7 @@ class AIClient:
                         self._running = False
 
             # Go down when the ball is below the paddle
-            elif (self._ball_position[1] + cfg.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg.PADDLE_HEIGHT / 2.0) > 10:
+            elif (self._ball_position[1] + cfg_team.BALL_SIZE / 2.0) - (self._paddle_position[1] + cfg_team.PADDLE_HEIGHT / 2.0) > 10:
                 _, writable, _ = select([], [self._to_server], [self._to_server])
                 if writable:
                     try:

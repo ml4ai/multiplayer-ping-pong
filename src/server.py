@@ -7,15 +7,25 @@ import csv
 import os
 from time import time 
 from select import select
-import config as cfg
 from utils import Paddle
 from utils import Ball
 from utils import send
+import config as cfg
+
+if len(sys.argv) < 4:
+    raise RuntimeError(f"Not enough arguments, {len(sys.argv)}")
+elif sys.argv[3] == "SINGLE":
+    import config_single as cfg_team
+elif sys.argv[3] == "TEAM":
+    import config_team as cfg_team
+else:
+    raise RuntimeError("Must specify SINGLE or TEAM")
+
 
 PADDLE_X_LEFT = 0
-PADDLE_X_RIGHT = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH
+PADDLE_X_RIGHT = cfg.WINDOW_SIZE[0] - cfg_team.PADDLE_WIDTH
 
-PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT) / 2)
+PADDLE_Y_CENTER = int((cfg.WINDOW_SIZE[1] - cfg_team.PADDLE_HEIGHT) / 2)
 
 
 class Server:
@@ -43,7 +53,7 @@ class Server:
 
         self._positions = {}
 
-        self._ball = Ball()
+        self._ball = Ball(cfg_team.BALL_SIZE, cfg_team.BALL_X_SPEED)
         self._positions["ball"] = [self._ball.rect.x, self._ball.rect.y]
 
         self._paddles = {}
@@ -134,7 +144,13 @@ class Server:
                 self._thread_lock.acquire()
                 self._from_client_connections[client_conn] = client_name
                 self._positions[client_name] = [PADDLE_X_LEFT, PADDLE_Y_CENTER]
-                self._paddles[client_name] = Paddle(self._positions[client_name], 0, cfg.WINDOW_SIZE[1] - cfg.PADDLE_HEIGHT)
+                self._paddles[client_name] = Paddle(self._positions[client_name], 
+                                                    0,
+                                                    cfg.WINDOW_SIZE[1] - cfg_team.PADDLE_HEIGHT,
+                                                    cfg_team.PADDLE_WIDTH, 
+                                                    cfg_team.PADDLE_HEIGHT, 
+                                                    cfg_team.PADDLE_SPEED,
+                                                    cfg.FOREGROUND_COLOR)
                 self._thread_lock.release()
 
                 print("Receiving commands from [" + client_name + ", " + client_addr[0] + ", " + str(client_addr[1]) + ']')
@@ -155,13 +171,13 @@ class Server:
                 self._thread_lock.acquire()
                 for paddle in self._paddles.values():
                     if pygame.sprite.collide_mask(self._ball, paddle):
-                        self._ball.bounce(int(((self._ball.rect.y + cfg.BALL_SIZE / 2.0) - (paddle.rect.y + cfg.PADDLE_HEIGHT / 2.0)) * cfg.BALL_BOUNCE_ON_PADDLE_SCALE))
+                        self._ball.bounce(int(((self._ball.rect.y + cfg_team.BALL_SIZE / 2.0) - (paddle.rect.y + cfg_team.PADDLE_HEIGHT / 2.0)) * cfg_team.BALL_BOUNCE_ON_PADDLE_SCALE))
                         
                         if self._ball.rect.x < cfg.WINDOW_SIZE[0] / 2:
-                            self._ball.rect.x = cfg.PADDLE_WIDTH
+                            self._ball.rect.x = cfg_team.PADDLE_WIDTH
 
                         else:
-                            self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg.PADDLE_WIDTH - cfg.BALL_SIZE
+                            self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg_team.PADDLE_WIDTH - cfg_team.BALL_SIZE
 
                         paddle_collide_ball = True
                         break
@@ -170,11 +186,11 @@ class Server:
                 # If ball has not collided with paddle, check if it collides with the wall
                 if not paddle_collide_ball:
                     # Collides with right wall
-                    if self._ball.rect.x >= cfg.WINDOW_SIZE[0] - cfg.BALL_SIZE:
+                    if self._ball.rect.x >= cfg.WINDOW_SIZE[0] - cfg_team.BALL_SIZE:
                         self._score_left += 1
                         self._ball.bounce()
                         # Offset the ball to avoid collision with paddle
-                        self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg.BALL_SIZE
+                        self._ball.rect.x = cfg.WINDOW_SIZE[0] - cfg_team.BALL_SIZE
 
                     # Collides left wall
                     elif self._ball.rect.x <= 0:
@@ -184,8 +200,8 @@ class Server:
                         self._ball.rect.x = 0
 
                     # Collides with bottom wall
-                    elif self._ball.rect.y >= cfg.WINDOW_SIZE[1] - cfg.BALL_SIZE:
-                        self._ball.rect.y = cfg.WINDOW_SIZE[1] - cfg.BALL_SIZE - 1
+                    elif self._ball.rect.y >= cfg.WINDOW_SIZE[1] - cfg_team.BALL_SIZE:
+                        self._ball.rect.y = cfg.WINDOW_SIZE[1] - cfg_team.BALL_SIZE - 1
                         self._ball.velocity[1] = -self._ball.velocity[1]
 
                     # Collides with top wall
@@ -203,7 +219,8 @@ class Server:
             data["positions"] = self._positions
 
             # Record state of the game
-            self._csv_writer.writerow([time(), json.dumps(data)])
+            if not self._game_paused:
+                self._csv_writer.writerow([time(), json.dumps(data)])
 
             _, writable, exceptional = select([], self._to_client_connections, self._to_client_connections, 0.0)
             for connection in writable:
@@ -348,10 +365,10 @@ class Server:
 if __name__ == "__main__":
     pygame.init()
 
-    assert len(sys.argv) >= 2
+    assert len(sys.argv) > 3
 
     host = sys.argv[1]
-    port = 6060 if len(sys.argv) < 3 else int(sys.argv[2])
+    port = int(sys.argv[2])
 
     server = Server(host, port)
     server.run()
